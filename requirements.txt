@@ -1,0 +1,10 @@
+pandas
+numpy
+scikit-learn
+konlpy
+sentence-transformers
+matplotlib
+plotly
+wordcloud
+python-dotenv
+jupyter
