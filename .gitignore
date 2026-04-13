@@ -1,0 +1,25 @@
+# API Keys
+.env
+.env.local
+*.key
+
+# Data (AI Hub 라이선스)
+data/
+*.json
+*.csv
+*.pkl
+!data/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS & IDE
+.DS_Store
+.vscode/
+.idea/
