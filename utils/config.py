@@ -10,8 +10,9 @@ DATA_SOURCE = os.getenv("DATA_SOURCE", "local")
 AWS_REGION   = os.getenv("AWS_REGION", "ap-northeast-2")
 S3_BUCKET    = os.getenv("S3_BUCKET_NAME", "pet-health-ai-data")
 
-# 로컬 경로
-_LOCAL_ROOT = Path("/Users/user/Desktop/59.반려견 성장 및 질병 관련 말뭉치 데이터/3.개방데이터/1.데이터")
+# 로컬 경로 — .env의 LOCAL_DATA_ROOT 또는 환경변수로 지정
+# 예: LOCAL_DATA_ROOT=/path/to/59.반려견.../3.개방데이터/1.데이터
+_LOCAL_ROOT      = Path(os.getenv("LOCAL_DATA_ROOT", "./data/raw"))
 LOCAL_TRAIN_PATH = _LOCAL_ROOT / "Training/02.라벨링데이터"
 LOCAL_VAL_PATH   = _LOCAL_ROOT / "Validation/02.라벨링데이터"
 
