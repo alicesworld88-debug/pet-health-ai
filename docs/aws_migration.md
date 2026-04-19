@@ -43,11 +43,11 @@ aws s3 mb s3://pet-health-ai-data --region ap-northeast-2
 
 # 로컬 데이터 → S3 업로드 (1회)
 aws s3 sync \
-  "/Users/user/Desktop/59.반려견 성장 및 질병 관련 말뭉치 데이터/3.개방데이터/1.데이터/Training/02.라벨링데이터/" \
+  "$LOCAL_DATA_ROOT/Training/02.라벨링데이터/" \
   s3://pet-health-ai-data/raw/training/
 
 aws s3 sync \
-  "/Users/user/Desktop/59.반려견 성장 및 질병 관련 말뭉치 데이터/3.개방데이터/1.데이터/Validation/02.라벨링데이터/" \
+  "$LOCAL_DATA_ROOT/Validation/02.라벨링데이터/" \
   s3://pet-health-ai-data/raw/validation/
 
 # 처리된 CSV도 업로드
