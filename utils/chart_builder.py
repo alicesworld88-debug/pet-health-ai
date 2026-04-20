@@ -176,20 +176,35 @@ class ChartBuilder:
         if not rows:
             return {}
         word_df = pd.DataFrame(rows)
-        fig = px.treemap(
-            word_df, path=["lifeCycle", "bigram"], values="count",
-            color="count",
-            color_continuous_scale=TREEMAP_SCALE,
-            range_color=[word_df["count"].min(), word_df["count"].max()],
-        )
-        fig.update_traces(
+        # 섹션 헤더(생애주기) = LC_COLOR, 빈도 타일 = 연속 스케일
+        cnt_min, cnt_max = word_df["count"].min(), word_df["count"].max()
+        def _interp(v):
+            t = (v - cnt_min) / max(cnt_max - cnt_min, 1)
+            # TEAL_100 → TEAL_900 보간
+            r = int(204 + (19  - 204) * t)
+            g = int(251 + (78  - 251) * t)
+            b = int(241 + (74  - 241) * t)
+            return f"rgb({r},{g},{b})"
+
+        ids, labels, parents, values, colors = [], [], [], [], []
+        for lc in _LIVES:
+            ids.append(lc); labels.append(lc)
+            parents.append(""); values.append(0)
+            colors.append(LC_COLOR.get(lc, NEUTRAL))
+        for _, row in word_df.iterrows():
+            uid = f"{row['lifeCycle']}|{row['bigram']}"
+            ids.append(uid); labels.append(row["bigram"])
+            parents.append(row["lifeCycle"]); values.append(row["count"])
+            colors.append(_interp(row["count"]))
+
+        fig = go.Figure(go.Treemap(
+            ids=ids, labels=labels, parents=parents, values=values,
+            marker=dict(colors=colors, line=dict(width=1.5, color=HOVER_BG)),
             hovertemplate="%{label}: %{value:,}회<extra></extra>",
-            textinfo="label+value", textfont_size=13,
+            textinfo="label+value", textfont=dict(size=13),
             opacity=_OPACITY,
-        )
-        fig.update_coloraxes(colorbar=dict(title="빈도", thickness=12, len=0.7,
-                                           tickfont=dict(size=10)))
-        fig.update_layout(**_layout(height=480, margin=dict(t=16, b=16, l=16, r=80)))
+        ))
+        fig.update_layout(**_layout(height=480, margin=dict(t=16, b=16, l=16, r=16)))
         return _to_json(fig)
 
     # ── 차트 8: Train / Val 생애주기 분할 ────────────────────────────────
