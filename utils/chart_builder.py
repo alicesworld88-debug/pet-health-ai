@@ -8,18 +8,20 @@ import plotly.express as px
 from utils.theme import (
     PALETTE, LC_COLOR, COLOR_OTHER, COLOR_PRIMARY,
     HEATMAP_SCALE, TREEMAP_SCALE, SUCCESS, WARNING, DANGER,
-    COLOR_BERT, COLOR_TFIDF, NEUTRAL,
+    COLOR_BERT, COLOR_TFIDF, COLOR_VALIDATION, NEUTRAL,
+    TEXT_COLOR, HOVER_BG, GRID_COLOR,
 )
 
 _DEPTS = ["내과", "외과", "피부과", "안과", "치과"]
 _LIVES = ["자견", "성견", "노령견"]
+_OPACITY = 0.82
 
 
 def _layout(**kwargs) -> dict:
     base = dict(
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="'Pretendard Variable','Inter',sans-serif", size=12, color="#09090b"),
-        hoverlabel=dict(bgcolor="#ffffff", font_size=12),
+        font=dict(family="'Pretendard Variable','Inter',sans-serif", size=12, color=TEXT_COLOR),
+        hoverlabel=dict(bgcolor=HOVER_BG, font_size=12),
         margin=dict(t=16, b=40, l=60, r=20),
     )
     base.update(kwargs)
@@ -40,7 +42,6 @@ class ChartBuilder:
 
     def disease_bar(self, top_n: int = 15) -> dict:
         dis = self.df["disease"].value_counts().head(top_n)
-        # 1위는 강조색, 나머지는 단계적으로 흐려지는 blue
         colors = []
         for i, n in enumerate(dis.index):
             if n == "기타":
@@ -52,13 +53,13 @@ class ChartBuilder:
                 colors.append(f"rgba(59,130,246,{opacity:.2f})")
         fig = go.Figure(go.Bar(
             x=dis.values.tolist(), y=dis.index.tolist(), orientation="h",
-            marker_color=colors,
+            marker_color=colors, opacity=_OPACITY,
             text=[f"{v:,}" for v in dis.values], textposition="outside",
             hovertemplate="%{y}: %{x:,}건<extra></extra>",
         ))
         fig.update_layout(**_layout(
             yaxis=dict(autorange="reversed", tickfont=dict(size=11)),
-            xaxis=dict(title="건수", gridcolor="#f1f5f9"), height=360,
+            xaxis=dict(title="건수", gridcolor=GRID_COLOR), height=360,
         ))
         return _to_json(fig)
 
@@ -68,8 +69,8 @@ class ChartBuilder:
         lc = self.df["lifeCycle"].value_counts().reindex(_LIVES).dropna()
         fig = go.Figure(go.Pie(
             labels=lc.index.tolist(), values=lc.values.tolist(), hole=0.52,
-            marker_colors=[LC_COLOR.get(l, "#aaa") for l in lc.index],
-            textinfo="label+percent",
+            marker_colors=[LC_COLOR.get(l, NEUTRAL) for l in lc.index],
+            textinfo="label+percent", opacity=_OPACITY,
             hovertemplate="%{label}: %{value:,}건 (%{percent})<extra></extra>",
         ))
         fig.update_layout(**_layout(
@@ -88,7 +89,7 @@ class ChartBuilder:
                for d in _DEPTS] for lc in _LIVES]
         fig = go.Figure(go.Heatmap(
             z=z, x=_DEPTS, y=_LIVES,
-            colorscale=HEATMAP_SCALE,
+            colorscale=HEATMAP_SCALE, opacity=_OPACITY,
             text=[[f"{v:,}" for v in row] for row in z], texttemplate="%{text}",
             hovertemplate="%{y} × %{x}: %{z:,}건<extra></extra>", showscale=True,
         ))
@@ -105,7 +106,7 @@ class ChartBuilder:
         for lc, color in LC_COLOR.items():
             vals = self.df[self.df["lifeCycle"] == lc]["input"].str.len().tolist()
             fig.add_trace(go.Box(
-                y=vals, name=lc, marker_color=color,
+                y=vals, name=lc, marker_color=color, opacity=_OPACITY,
                 boxpoints="outliers", jitter=0.3, pointpos=-1.8,
                 hovertemplate=f"{lc} — 길이: %{{y}}자<extra></extra>",
             ))
@@ -127,7 +128,7 @@ class ChartBuilder:
         fig = px.sunburst(sb, path=["lifeCycle", "department", "disease"],
                           values="cnt", color_discrete_sequence=PALETTE)
         fig.update_traces(hovertemplate="%{label}: %{value:,}건<extra></extra>",
-                          textfont_size=12)
+                          textfont_size=12, opacity=_OPACITY)
         fig.update_layout(**_layout(height=440, margin=dict(t=16, b=16, l=16, r=16)))
         return _to_json(fig)
 
@@ -143,6 +144,7 @@ class ChartBuilder:
                      category_orders={"department": _DEPTS},
                      color_discrete_sequence=PALETTE,
                      labels={"cnt": "건수", "disease": "질병", "department": "진료과"})
+        fig.update_traces(opacity=_OPACITY)
         fig.update_layout(**_layout(
             height=400,
             margin=dict(t=16, b=60, l=60, r=20),
@@ -169,7 +171,7 @@ class ChartBuilder:
                         if len(t) >= 2 and not t.isdigit() and t not in STOPWORDS]
                 for a, b in zip(toks, toks[1:]):
                     counter[f"{a} {b}"] += 1
-            for bigram, cnt in counter.most_common(20):
+            for bigram, cnt in counter.most_common(10):
                 rows.append({"lifeCycle": lc, "bigram": bigram, "count": cnt})
         if not rows:
             return {}
@@ -182,11 +184,12 @@ class ChartBuilder:
         )
         fig.update_traces(
             hovertemplate="%{label}: %{value:,}회<extra></extra>",
-            textinfo="label+value", textfont_size=12,
+            textinfo="label+value", textfont_size=13,
+            opacity=_OPACITY,
         )
         fig.update_coloraxes(colorbar=dict(title="빈도", thickness=12, len=0.7,
                                            tickfont=dict(size=10)))
-        fig.update_layout(**_layout(height=420, margin=dict(t=16, b=16, l=16, r=16)))
+        fig.update_layout(**_layout(height=480, margin=dict(t=16, b=16, l=16, r=80)))
         return _to_json(fig)
 
     # ── 차트 8: Train / Val 생애주기 분할 ────────────────────────────────
@@ -195,10 +198,11 @@ class ChartBuilder:
         tv = self.df.groupby(["split", "lifeCycle"]).size().reset_index(name="cnt")
         fig = px.bar(
             tv, x="lifeCycle", y="cnt", color="split", barmode="stack",
-            color_discrete_map={"train": "#a8a4f0", "val": "#7dd4d4"},
-            category_orders={"lifeCycle": _LIVES, "split": ["train", "val"]},
+            color_discrete_map={"train": COLOR_BERT, "validation": "#F4A261"},
+            category_orders={"lifeCycle": _LIVES, "split": ["train", "validation"]},
             labels={"cnt": "건수", "lifeCycle": "생애주기", "split": "분할"},
         )
+        fig.update_traces(opacity=_OPACITY)
         fig.update_layout(**_layout(
             height=280,
             xaxis=dict(title="생애주기"), yaxis=dict(title="건수"),
@@ -237,7 +241,7 @@ class ChartBuilder:
         fig = go.Figure()
         fig.add_trace(go.Bar(
             x=stats.index.tolist(), y=stats["cnt"].tolist(),
-            name="문서 수", marker_color=COLOR_PRIMARY, opacity=0.85,
+            name="문서 수", marker_color=COLOR_PRIMARY, opacity=_OPACITY,
             yaxis="y", hovertemplate="%{x}: %{y:,}건<extra></extra>",
         ))
         fig.add_trace(go.Scatter(
@@ -245,11 +249,12 @@ class ChartBuilder:
             name="평균 질문 길이", mode="lines+markers",
             marker=dict(size=9, color=WARNING, symbol="circle"),
             line=dict(color=WARNING, width=2.5),
+            opacity=_OPACITY,
             yaxis="y2", hovertemplate="%{x}: %{y:.1f}자<extra></extra>",
         ))
         fig.update_layout(**_layout(
             height=300,
-            yaxis=dict(title="문서 수", gridcolor="#f1f5f9"),
+            yaxis=dict(title="문서 수", gridcolor=GRID_COLOR),
             yaxis2=dict(title="평균 질문 길이 (chars)",
                         overlaying="y", side="right", showgrid=False),
             legend=dict(orientation="h", y=1.12, x=0.5, xanchor="center"),
@@ -267,14 +272,14 @@ class ChartBuilder:
             vals = ct[dept].round(1).tolist()
             fig.add_trace(go.Bar(
                 name=dept, y=_LIVES, x=vals, orientation="h",
-                marker_color=PALETTE[i],
+                marker_color=PALETTE[i], opacity=_OPACITY,
                 text=[f"{v:.0f}%" for v in vals], textposition="inside",
-                insidetextanchor="middle", textfont=dict(size=11, color="#fff"),
+                insidetextanchor="middle", textfont=dict(size=11, color=HOVER_BG),
                 hovertemplate=f"{dept}: %{{x:.1f}}%<extra></extra>",
             ))
         fig.update_layout(**_layout(
             barmode="stack", height=220,
-            xaxis=dict(title="비율 (%)", range=[0, 100], gridcolor="#f1f5f9", ticksuffix="%"),
+            xaxis=dict(title="비율 (%)", range=[0, 100], gridcolor=GRID_COLOR, ticksuffix="%"),
             yaxis=dict(title=""),
             legend=dict(orientation="h", y=1.15, x=0.5, xanchor="center"),
             margin=dict(t=16, b=50, l=70, r=20),
