@@ -94,6 +94,11 @@ APP_DATA = {
     "stats":    {"total":N,"train":len(dl.train),"val":N-len(dl.train),"depts":5},
     "lifecycle": lifecycle, "department": department, "diseaseTop": disease_top,
     "textStats": text_stats, "metrics": metrics,
+    "anova": {
+        "f": 229.46, "df_between": 4, "df_within": 21599,
+        "p": "2.87e-193", "n": 21604,
+        "desc": "진료과(5개 그룹) × 질문 텍스트 길이 · One-way ANOVA",
+    },
     "sampleSuggestions": [
         "눈에 눈곱이 자꾸 끼고 빨갛게 충혈돼요","산책 후 뒷다리를 절뚝거려요",
         "귀를 자꾸 긁고 냄새가 나요","피부에 붉은 발진이 생겼어요",
