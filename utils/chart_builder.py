@@ -1,15 +1,15 @@
-"""Plotly 차트 생성 모듈 — 통일된 팔레트 사용."""
+"""Plotly 차트 생성 모듈 — theme.py에서 색상 import."""
 import json
 import collections
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 
-# ── 공통 팔레트 ──────────────────────────────────────────────────────────
-PALETTE = ["#a8a4f0", "#7dd4d4", "#85c99a", "#e8c97a", "#f0a080"]
-LC_COLOR = {"자견": "#a8a4f0", "성견": "#7dd4d4", "노령견": "#e8c97a"}
-COLOR_OTHER   = "#e8c97a"   # 기타 질병
-COLOR_PRIMARY = "#a8a4f0"   # 일반 강조
+from utils.theme import (
+    PALETTE, LC_COLOR, COLOR_OTHER, COLOR_PRIMARY,
+    HEATMAP_SCALE, TREEMAP_SCALE, SUCCESS, WARNING, DANGER,
+    COLOR_BERT, COLOR_TFIDF, NEUTRAL,
+)
 
 _DEPTS = ["내과", "외과", "피부과", "안과", "치과"]
 _LIVES = ["자견", "성견", "노령견"]
@@ -40,15 +40,25 @@ class ChartBuilder:
 
     def disease_bar(self, top_n: int = 15) -> dict:
         dis = self.df["disease"].value_counts().head(top_n)
+        # 1위는 강조색, 나머지는 단계적으로 흐려지는 blue
+        colors = []
+        for i, n in enumerate(dis.index):
+            if n == "기타":
+                colors.append(COLOR_OTHER)
+            elif i == 0:
+                colors.append(COLOR_PRIMARY)
+            else:
+                opacity = max(0.35, 1.0 - i * 0.05)
+                colors.append(f"rgba(59,130,246,{opacity:.2f})")
         fig = go.Figure(go.Bar(
             x=dis.values.tolist(), y=dis.index.tolist(), orientation="h",
-            marker_color=[COLOR_OTHER if n == "기타" else COLOR_PRIMARY for n in dis.index],
+            marker_color=colors,
             text=[f"{v:,}" for v in dis.values], textposition="outside",
             hovertemplate="%{y}: %{x:,}건<extra></extra>",
         ))
         fig.update_layout(**_layout(
             yaxis=dict(autorange="reversed", tickfont=dict(size=11)),
-            xaxis=dict(title="건수"), height=340,
+            xaxis=dict(title="건수", gridcolor="#f1f5f9"), height=360,
         ))
         return _to_json(fig)
 
@@ -78,7 +88,7 @@ class ChartBuilder:
                for d in _DEPTS] for lc in _LIVES]
         fig = go.Figure(go.Heatmap(
             z=z, x=_DEPTS, y=_LIVES,
-            colorscale=[[0, "#f0effd"], [0.5, "#c4c0f5"], [1, "#a8a4f0"]],
+            colorscale=HEATMAP_SCALE,
             text=[[f"{v:,}" for v in row] for row in z], texttemplate="%{text}",
             hovertemplate="%{y} × %{x}: %{z:,}건<extra></extra>", showscale=True,
         ))
@@ -134,10 +144,11 @@ class ChartBuilder:
                      color_discrete_sequence=PALETTE,
                      labels={"cnt": "건수", "disease": "질병", "department": "진료과"})
         fig.update_layout(**_layout(
-            height=360,
+            height=400,
+            margin=dict(t=16, b=60, l=60, r=20),
             yaxis=dict(autorange="reversed", tickfont=dict(size=11)),
-            xaxis=dict(title="건수"),
-            legend=dict(orientation="h", y=1.06, x=0.5, xanchor="center"),
+            xaxis=dict(title=""),
+            legend=dict(orientation="h", y=-0.14, x=0.5, xanchor="center"),
         ))
         return _to_json(fig)
 
@@ -166,7 +177,7 @@ class ChartBuilder:
         fig = px.treemap(
             word_df, path=["lifeCycle", "bigram"], values="count",
             color="count",
-            color_continuous_scale=["#f0effd", "#ccc9f7", "#a8a4f0", "#7b76d4", "#5450b0"],
+            color_continuous_scale=TREEMAP_SCALE,
             range_color=[word_df["count"].min(), word_df["count"].max()],
         )
         fig.update_traces(
@@ -215,6 +226,61 @@ class ChartBuilder:
         ))
         return _to_json(fig)
 
+    # ── 차트 10: 진료과별 문서 수 + 평균 질문 길이 (dual-axis) ────────────
+
+    def dept_dual_axis(self) -> dict:
+        stats = (self.df.groupby("department")
+                 .agg(cnt=("input", "count"),
+                      avg_q=("input", lambda x: round(x.str.len().mean(), 1)),
+                      avg_a=("output", lambda x: round(x.str.len().mean(), 1)))
+                 .reindex(_DEPTS))
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=stats.index.tolist(), y=stats["cnt"].tolist(),
+            name="문서 수", marker_color=COLOR_PRIMARY, opacity=0.85,
+            yaxis="y", hovertemplate="%{x}: %{y:,}건<extra></extra>",
+        ))
+        fig.add_trace(go.Scatter(
+            x=stats.index.tolist(), y=stats["avg_q"].tolist(),
+            name="평균 질문 길이", mode="lines+markers",
+            marker=dict(size=9, color=WARNING, symbol="circle"),
+            line=dict(color=WARNING, width=2.5),
+            yaxis="y2", hovertemplate="%{x}: %{y:.1f}자<extra></extra>",
+        ))
+        fig.update_layout(**_layout(
+            height=300,
+            yaxis=dict(title="문서 수", gridcolor="#f1f5f9"),
+            yaxis2=dict(title="평균 질문 길이 (chars)",
+                        overlaying="y", side="right", showgrid=False),
+            legend=dict(orientation="h", y=1.12, x=0.5, xanchor="center"),
+            margin=dict(t=16, b=40, l=60, r=70),
+        ))
+        return _to_json(fig)
+
+    # ── 차트 11: 생애주기 × 진료과 100% 스택 바 ──────────────────────────
+
+    def lifecycle_dept_stacked(self) -> dict:
+        ct = pd.crosstab(self.df["lifeCycle"], self.df["department"],
+                         normalize="index").reindex(_LIVES)[_DEPTS] * 100
+        fig = go.Figure()
+        for i, dept in enumerate(_DEPTS):
+            vals = ct[dept].round(1).tolist()
+            fig.add_trace(go.Bar(
+                name=dept, y=_LIVES, x=vals, orientation="h",
+                marker_color=PALETTE[i],
+                text=[f"{v:.0f}%" for v in vals], textposition="inside",
+                insidetextanchor="middle", textfont=dict(size=11, color="#fff"),
+                hovertemplate=f"{dept}: %{{x:.1f}}%<extra></extra>",
+            ))
+        fig.update_layout(**_layout(
+            barmode="stack", height=220,
+            xaxis=dict(title="비율 (%)", range=[0, 100], gridcolor="#f1f5f9", ticksuffix="%"),
+            yaxis=dict(title=""),
+            legend=dict(orientation="h", y=1.15, x=0.5, xanchor="center"),
+            margin=dict(t=16, b=50, l=70, r=20),
+        ))
+        return _to_json(fig)
+
     # ── 전체 차트 딕셔너리 반환 ──────────────────────────────────────────
 
     def build_all(self) -> dict:
@@ -236,4 +302,8 @@ class ChartBuilder:
         charts["train_val_bar"] = self.train_val_bar()
         print("  ⑨ 질문·답변 길이 산점도...")
         charts["len_scatter"] = self.len_scatter()
+        print("  ⑩ 진료과 dual-axis (문서 수 + 평균 질문 길이)...")
+        charts["dept_dual_axis"] = self.dept_dual_axis()
+        print("  ⑪ 생애주기 × 진료과 100% 스택 바...")
+        charts["lifecycle_dept_stacked"] = self.lifecycle_dept_stacked()
         return charts

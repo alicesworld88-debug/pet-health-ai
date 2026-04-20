@@ -25,21 +25,27 @@ print(f"  매칭 DB: {len(train):,}개 | Ground Truth: {len(gt)}개")
 
 # TF-IDF 매칭
 print("TF-IDF 매칭 중...")
-tfidf         = TFIDFMatcher().fit(train["input_tokens"].fillna("").tolist())
-tfidf_results = [tfidf.match(q)[0] for q in gt["query"]]
+tfidf       = TFIDFMatcher().fit(train["input"].fillna("").tolist())
+tfidf_pairs = [tfidf.match(q) for q in gt["query"]]
+tfidf_results = [p[0] for p in tfidf_pairs]
+tfidf_score1  = [round(p[1][0], 4) if p[1] else 0.0 for p in tfidf_pairs]
 print("  완료")
 
 # BERT 임베딩 로드 / 생성 후 매칭
 print("BERT 임베딩/매칭 중...")
-bert         = BERTMatcher()
+bert       = BERTMatcher()
 bert.load_or_build(train["input_normalized"].fillna("").tolist())
-bert_results = [bert.match(q)[0] for q in gt["query"]]
+bert_pairs = [bert.match(q) for q in gt["query"]]
+bert_results = [p[0] for p in bert_pairs]
+bert_score1  = [round(p[1][0], 4) if p[1] else 0.0 for p in bert_pairs]
 print("  완료")
 
 # 결과 저장
 gt_out = gt.copy()
-gt_out["tfidf_top5"] = [str(r) for r in tfidf_results]
-gt_out["sbert_top5"] = [str(r) for r in bert_results]
+gt_out["tfidf_top5"]  = [str(r) for r in tfidf_results]
+gt_out["sbert_top5"]  = [str(r) for r in bert_results]
+gt_out["tfidf_score1"] = tfidf_score1
+gt_out["sbert_score1"] = bert_score1
 gt_out.to_csv(RESULTS_PATH, index=False, encoding="utf-8-sig")
 print(f"매칭 결과 저장: {RESULTS_PATH}")
 
