@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from utils.data_loader import DataLoader
 from utils.chart_builder import ChartBuilder
+from utils.theme import build_css
 
 APP = Path(__file__).parent / "app"
 SRC = APP / "dashboard.html"
@@ -64,6 +65,39 @@ metrics = {
 # 매칭 결과
 match = dl.matching_results
 
+# 실패 쿼리 분석
+import ast
+
+def _parse_ids(val):
+    try: return ast.literal_eval(val) if isinstance(val, str) else list(val)
+    except: return []
+
+def _is_rel(idx, disease, lc, corpus):
+    if not (0 <= idx < len(corpus)): return False
+    doc = corpus.iloc[idx]
+    return doc["disease"] == disease and doc["lifeCycle"] == lc
+
+_train = dl.train
+fail_analysis = []
+for _, row in match.iterrows():
+    t5 = _parse_ids(row["tfidf_top5"])[:5]
+    b5 = _parse_ids(row["sbert_top5"])[:5]
+    disease, lc = str(row["disease"]), str(row["lifeCycle"])
+    t_hit = any(_is_rel(i, disease, lc, _train) for i in t5)
+    b_hit = any(_is_rel(i, disease, lc, _train) for i in b5)
+    status = "both" if (t_hit and b_hit) else "tfidf" if t_hit else "bert" if b_hit else "none"
+    fail_analysis.append({
+        "id": str(row["query_id"]), "q": str(row["query"])[:80],
+        "life": lc, "disease": disease,
+        "tfidf_hit": t_hit, "bert_hit": b_hit, "status": status,
+    })
+
+# 유사도 점수
+sim_scores = {
+    "tfidf": match["tfidf_score1"].round(4).tolist() if "tfidf_score1" in match.columns else [],
+    "bert":  match["sbert_score1"].round(4).tolist()  if "sbert_score1" in match.columns else [],
+}
+
 def _demo_item(idx: int, rank: int, sim: float) -> dict:
     d = dl.doc_snippet(idx, q_len=200, a_len=200)
     return {"rank":rank,"sim":sim,"lifecycle":d["lifeCycle"],"dept":d["department"],
@@ -104,21 +138,26 @@ APP_DATA = {
         "귀를 자꾸 긁고 냄새가 나요","피부에 붉은 발진이 생겼어요",
         "물을 너무 많이 마시고 소변을 자주 봐요",
     ],
-    "results":    {"bert":demo_bert,"tfidf":demo_tfidf},
-    "evalQueries": eval_queries,
-    "eda":         eda_charts,
+    "results":      {"bert":demo_bert,"tfidf":demo_tfidf},
+    "evalQueries":  eval_queries,
+    "failAnalysis": fail_analysis,
+    "simScores":    sim_scores,
+    "eda":          eda_charts,
 }
 
 print(f"✅ 데이터 구성 완료 — 쿼리 {len(eval_queries)}개 · {len(json.dumps(APP_DATA))//1024}KB")
 
 # dashboard_live.html: EDA 포함 전체 데이터 주입
 html     = SRC.read_text(encoding="utf-8")
+theme_css = build_css()
 override = (
     "<script>"
     f"window.APP_DATA=Object.assign(window.APP_DATA||{{}},{json.dumps(APP_DATA,ensure_ascii=False)});"
     "</script>"
 )
-OUT.write_text(html.replace("</body>", override + "\n</body>"), encoding="utf-8")
+live_html = html.replace("</head>", theme_css + "\n</head>")
+live_html = live_html.replace("</body>", override + "\n</body>")
+OUT.write_text(live_html, encoding="utf-8")
 print(f"📄 dashboard_live.html 저장: {OUT}")
 
 # dashboard.html: 실데이터 인라인 업데이트 (EDA 차트 제외)
