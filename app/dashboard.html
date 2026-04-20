@@ -1,0 +1,1242 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>반려견 증상 매칭 · Vet Match</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" crossorigin="anonymous"></script>
+<style>
+:root {
+  --bg: #fafafa; --bg-elev: #ffffff; --bg-soft: #f4f4f5; --bg-hover: #f0f0f2;
+  --border: #e7e7ea; --border-strong: #d4d4d8;
+  --text: #09090b; --text-muted: #52525b; --text-subtle: #a1a1aa;
+  --accent-h: 258;
+  --accent: oklch(0.55 0.22 var(--accent-h));
+  --accent-strong: oklch(0.46 0.24 var(--accent-h));
+  --accent-soft: oklch(0.96 0.04 var(--accent-h));
+  --accent-ink: oklch(0.28 0.12 var(--accent-h));
+  --accent-fg: #ffffff;
+  --compare: oklch(0.58 0.02 260); --compare-soft: oklch(0.96 0.005 260);
+  --success: oklch(0.6 0.15 155); --warning: oklch(0.72 0.17 75); --danger: oklch(0.58 0.21 25);
+  --accent-2: oklch(0.65 0.18 210); --accent-3: oklch(0.7 0.15 155);
+  --accent-4: oklch(0.72 0.17 75); --accent-5: oklch(0.62 0.19 25);
+  --radius-sm: 6px; --radius: 10px; --radius-lg: 14px;
+  --shadow-sm: 0 1px 2px rgba(9,9,11,.04);
+  --shadow: 0 1px 3px rgba(9,9,11,.06), 0 1px 2px rgba(9,9,11,.04);
+  --shadow-lg: 0 8px 24px rgba(9,9,11,.08), 0 2px 6px rgba(9,9,11,.04);
+  --font-sans: "Pretendard Variable","Pretendard","Inter",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --font-mono: "JetBrains Mono","SF Mono",ui-monospace,Menlo,monospace;
+}
+:root[data-theme="dark"] {
+  --bg: #09090b; --bg-elev: #111114; --bg-soft: #16161a; --bg-hover: #1c1c21;
+  --border: #26262b; --border-strong: #34343a;
+  --text: #fafafa; --text-muted: #a1a1aa; --text-subtle: #71717a;
+  --accent: oklch(0.68 0.2 var(--accent-h)); --accent-strong: oklch(0.78 0.17 var(--accent-h));
+  --accent-soft: oklch(0.24 0.1 var(--accent-h)); --accent-ink: oklch(0.88 0.1 var(--accent-h));
+  --compare: oklch(0.55 0.02 260); --compare-soft: oklch(0.22 0.01 260);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+  --shadow: 0 1px 3px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,.4), 0 2px 6px rgba(0,0,0,.3);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+body {
+  font-family: var(--font-sans); background: var(--bg); color: var(--text);
+  font-size: 14px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+
+.app { display: grid; grid-template-columns: 248px 1fr; height: 100vh; overflow: hidden; }
+
+.sidebar {
+  background: var(--bg-elev); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; height: 100vh; overflow-y: auto;
+}
+.sidebar-brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 18px 18px 14px; border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.sidebar-brand .logo {
+  width: 30px; height: 30px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  display: grid; place-items: center; color: var(--accent-fg);
+  font-weight: 700; font-size: 14px;
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,.2), var(--shadow-sm);
+}
+.sidebar-brand .title { font-weight: 600; font-size: 14px; letter-spacing: -0.01em; }
+.sidebar-brand .sub { font-size: 11px; color: var(--text-subtle); font-family: var(--font-mono); margin-top: 2px; }
+.sidebar-section {
+  padding: 18px 12px 6px; font-size: 11px; font-weight: 500; color: var(--text-subtle);
+  text-transform: uppercase; letter-spacing: 0.08em; font-family: var(--font-mono); flex-shrink: 0;
+}
+.nav { display: flex; flex-direction: column; padding: 0 8px; gap: 1px; flex-shrink: 0; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+  border-radius: var(--radius-sm); color: var(--text-muted); font-size: 13.5px;
+  font-weight: 500; text-align: left; width: 100%; transition: background .1s, color .1s;
+}
+.nav-item:hover { background: var(--bg-hover); color: var(--text); }
+.nav-item.active { background: var(--accent-soft); color: var(--accent-ink); }
+.nav-item .num { font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); width: 14px; }
+.nav-item.active .num { color: var(--accent); }
+.nav-item .label { flex: 1; }
+.nav-item .chev { opacity: 0; color: var(--text-subtle); }
+.nav-item.active .chev { opacity: 1; color: var(--accent); }
+.sidebar-foot {
+  margin-top: auto; padding: 12px; border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;
+}
+.sidebar-foot .kbd-row {
+  display: flex; justify-content: space-between; font-size: 11px;
+  color: var(--text-subtle); font-family: var(--font-mono);
+}
+.kbd {
+  display: inline-block; padding: 2px 6px; border: 1px solid var(--border);
+  border-bottom-width: 2px; border-radius: 4px; background: var(--bg-soft);
+  color: var(--text-muted); font-size: 10.5px; font-family: var(--font-mono); line-height: 1;
+}
+
+.main { display: flex; flex-direction: column; min-width: 0; overflow-y: auto; height: 100vh; }
+.topbar {
+  height: 56px; border-bottom: 1px solid var(--border); background: var(--bg-elev);
+  display: flex; align-items: center; padding: 0 24px; gap: 16px;
+  position: sticky; top: 0; z-index: 5; flex-shrink: 0;
+}
+.breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); }
+.breadcrumb .sep { color: var(--text-subtle); }
+.breadcrumb .curr { color: var(--text); font-weight: 600; }
+.topbar-spacer { flex: 1; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+  border: 1px solid var(--border); border-radius: 999px; font-size: 12px;
+  color: var(--text-muted); background: var(--bg-soft); font-family: var(--font-mono);
+}
+.pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+.pill.live .dot { background: var(--success); box-shadow: 0 0 0 3px color-mix(in oklch, var(--success) 25%, transparent); }
+.icon-btn {
+  width: 34px; height: 34px; display: grid; place-items: center;
+  border-radius: 8px; color: var(--text-muted); border: 1px solid transparent;
+}
+.icon-btn:hover { background: var(--bg-hover); color: var(--text); border-color: var(--border); }
+.content { padding: 24px 28px 80px; max-width: 1360px; width: 100%; }
+.page-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 24px; margin-bottom: 20px;
+}
+.page-title { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 4px; }
+.page-sub { font-size: 13px; color: var(--text-muted); margin: 0; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px;
+  border-radius: var(--radius-sm); font-size: 13px; font-weight: 500;
+  border: 1px solid var(--border-strong); background: var(--bg-elev); color: var(--text);
+  transition: background .1s, border-color .1s;
+}
+.btn:hover { background: var(--bg-hover); }
+.btn-primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
+.btn-primary:hover { background: var(--accent-strong); }
+.btn-ghost { border-color: transparent; background: transparent; color: var(--text-muted); }
+.btn-ghost:hover { background: var(--bg-hover); color: var(--text); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+
+.card { background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 14px; }
+.card-title { font-size: 13px; font-weight: 600; letter-spacing: -0.005em; margin: 0; }
+.card-sub { font-size: 12px; color: var(--text-subtle); margin: 2px 0 0; font-family: var(--font-mono); }
+
+.metric-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+.metric {
+  background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; position: relative; overflow: hidden;
+}
+.metric .label { font-size: 11.5px; color: var(--text-muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; }
+.metric .value { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--text); }
+.metric .foot { display: flex; gap: 6px; align-items: center; font-size: 11.5px; color: var(--text-subtle); font-family: var(--font-mono); margin-top: 2px; }
+.metric .delta { display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: var(--font-mono); }
+.metric .delta.up { color: var(--success); background: color-mix(in oklch, var(--success) 12%, transparent); }
+.metric .delta.down { color: var(--danger); background: color-mix(in oklch, var(--danger) 12%, transparent); }
+
+.search-layout { display: grid; grid-template-columns: 1fr 280px; gap: 20px; }
+.search-panel { background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
+.search-input-wrap {
+  position: relative; display: flex; align-items: flex-start; gap: 10px;
+  border: 1.5px solid var(--border-strong); border-radius: var(--radius);
+  padding: 12px 14px; background: var(--bg); transition: border-color .1s, box-shadow .1s;
+}
+.search-input-wrap:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 18%, transparent);
+}
+.search-input-wrap .glyph { color: var(--text-subtle); padding-top: 3px; }
+.search-input { flex: 1; border: none; outline: none; background: transparent; font-size: 14.5px; line-height: 1.55; resize: none; min-height: 22px; max-height: 120px; }
+.search-input::placeholder { color: var(--text-subtle); }
+.search-foot { margin-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { padding: 4px 10px; border-radius: 999px; font-size: 12px; color: var(--text-muted); background: var(--bg-soft); border: 1px solid var(--border); transition: all .1s; }
+.chip:hover { background: var(--bg-hover); color: var(--text); border-color: var(--border-strong); }
+.empty-state { padding: 60px 20px 40px; text-align: center; border-top: 1px dashed var(--border); margin-top: 22px; }
+.empty-state .big-icon { width: 44px; height: 44px; border-radius: 12px; background: var(--accent-soft); color: var(--accent-ink); display: inline-grid; place-items: center; margin-bottom: 14px; }
+.empty-state h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+.empty-state p { color: var(--text-muted); font-size: 13px; max-width: 520px; margin: 0 auto 22px; }
+.example-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap: 8px; max-width: 720px; margin: 0 auto; text-align: left; }
+.example-pill { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-elev); font-size: 13px; color: var(--text); transition: all .1s; }
+.example-pill:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink); }
+.example-pill .arrow { margin-left: auto; color: var(--text-subtle); }
+.example-pill:hover .arrow { color: var(--accent); }
+
+.settings-card { background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 18px; position: sticky; top: 80px; }
+.setting-group .g-label { font-size: 11px; font-weight: 500; color: var(--text-subtle); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+.seg { display: flex; background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: 3px; gap: 2px; }
+.seg-btn { flex: 1; padding: 6px 8px; font-size: 12px; border-radius: 5px; color: var(--text-muted); font-weight: 500; transition: all .1s; }
+.seg-btn.active { background: var(--bg-elev); color: var(--text); box-shadow: var(--shadow-sm); }
+.seg.stack { flex-direction: column; }
+.slider-row { display: flex; align-items: center; gap: 10px; }
+.slider-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+.slider-row .val { font-family: var(--font-mono); font-size: 12px; color: var(--text); min-width: 18px; text-align: right; }
+
+.results-wrap { margin-top: 22px; }
+.results-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.results-title { font-size: 13px; font-weight: 600; }
+.results-title .q-preview { color: var(--text-muted); font-weight: 400; margin-left: 6px; }
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.model-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.model-col-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: var(--radius); font-size: 12.5px; font-weight: 600; border: 1px solid var(--border); }
+.model-col-head .left { display: flex; align-items: center; gap: 8px; }
+.model-col-head .swatch { width: 10px; height: 10px; border-radius: 3px; }
+.model-col-head .subtle { font-weight: 400; font-size: 11.5px; color: var(--text-subtle); font-family: var(--font-mono); }
+.model-col.bert .model-col-head { background: var(--accent-soft); color: var(--accent-ink); border-color: transparent; }
+.model-col.bert .model-col-head .swatch { background: var(--accent); }
+.model-col.tfidf .model-col-head { background: var(--compare-soft); color: var(--text); }
+.model-col.tfidf .model-col-head .swatch { background: var(--compare); }
+.result-card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-elev); overflow: hidden; transition: border-color .1s; }
+.result-card:hover { border-color: var(--border-strong); }
+.result-card.open { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 12%, transparent); }
+.result-row { display: grid; grid-template-columns: 28px 1fr auto; align-items: flex-start; gap: 10px; padding: 12px 14px; cursor: pointer; }
+.result-row .rank { font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); margin-top: 3px; }
+.result-card.open .rank { color: var(--accent); }
+.result-body { min-width: 0; }
+.result-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+.tag { display: inline-flex; padding: 2px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 500; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.04em; border: 1px solid var(--border); color: var(--text-muted); background: var(--bg-soft); }
+.tag.life-puppy  { color: oklch(0.48 0.16 40);  background: oklch(0.96 0.04 40); border-color: transparent; }
+.tag.life-adult  { color: oklch(0.42 0.14 200); background: oklch(0.96 0.03 200); border-color: transparent; }
+.tag.life-senior { color: oklch(0.4 0.1 280);   background: oklch(0.95 0.04 280); border-color: transparent; }
+:root[data-theme="dark"] .tag.life-puppy  { color: oklch(0.82 0.14 40);  background: oklch(0.28 0.08 40); }
+:root[data-theme="dark"] .tag.life-adult  { color: oklch(0.82 0.12 200); background: oklch(0.25 0.06 200); }
+:root[data-theme="dark"] .tag.life-senior { color: oklch(0.82 0.1 280);  background: oklch(0.26 0.07 280); }
+.tag.dept { color: var(--text); background: var(--bg-soft); }
+.tag.disease { color: var(--accent-ink); background: var(--accent-soft); border-color: transparent; }
+.result-q { font-size: 13px; line-height: 1.5; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.result-card.open .result-q { -webkit-line-clamp: unset; display: block; }
+.sim-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; min-width: 78px; }
+.sim-val { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+.sim-bar { width: 64px; height: 4px; background: var(--bg-soft); border-radius: 2px; overflow: hidden; }
+.sim-bar .fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.model-col.tfidf .sim-bar .fill { background: var(--compare); }
+.result-expand { padding: 0 14px 14px; border-top: 1px dashed var(--border); margin-top: 4px; }
+.result-expand .block-label { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.08em; margin: 14px 0 6px; }
+.result-expand .q-text { font-size: 13px; line-height: 1.6; color: var(--text); margin: 0; }
+.result-expand .a-text { font-size: 13px; line-height: 1.7; color: var(--text-muted); padding: 10px 12px; background: var(--bg-soft); border-radius: var(--radius-sm); margin: 0; white-space: pre-wrap; }
+
+.table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.table th, .table td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+.table th { color: var(--text-subtle); font-weight: 500; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; background: var(--bg-soft); }
+.table tbody tr:last-child td { border-bottom: none; }
+.table td.num { font-family: var(--font-mono); text-align: right; }
+.table td.strong { font-weight: 600; color: var(--text); }
+
+.chart-ph {
+  border: 1px dashed var(--border-strong); border-radius: var(--radius);
+  background: repeating-linear-gradient(45deg, transparent 0 8px, color-mix(in oklch, var(--border) 30%, transparent) 8px 9px), var(--bg-soft);
+  padding: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 6px; min-height: 240px;
+}
+.chart-ph .ph-title { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+.chart-ph .ph-file { font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); }
+.chart-ph .ph-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-family: var(--font-mono); background: var(--bg-elev); border: 1px solid var(--border); color: var(--text-subtle); margin-top: 4px; }
+
+.bar-row { display: grid; grid-template-columns: 72px 1fr 60px; align-items: center; gap: 10px; padding: 6px 0; }
+.bar-row .bar-label { font-size: 12px; color: var(--text); font-family: var(--font-mono); }
+.bar-row .bar-val { font-family: var(--font-mono); font-size: 12px; color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
+.bar-track { position: relative; height: 22px; background: var(--bg-soft); border-radius: 4px; overflow: hidden; }
+.bar-fill { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 4px; transition: width .6s cubic-bezier(.2,.8,.2,1); }
+.bar-fill.bert { background: var(--accent); }
+.bar-fill.tfidf { background: var(--compare); }
+.bar-fill.solid { background: var(--accent); }
+
+.group-bars { display: flex; flex-direction: column; gap: 18px; padding: 6px 4px; }
+.group-item { display: grid; grid-template-columns: 72px 1fr; align-items: center; gap: 12px; }
+.group-item .g-name { font-size: 13px; font-weight: 600; font-family: var(--font-mono); }
+.group-bars-inner { display: flex; flex-direction: column; gap: 6px; }
+.gb { display: grid; grid-template-columns: 52px 1fr 60px; align-items: center; gap: 10px; }
+.gb .gb-label { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+.gb .gb-val { font-family: var(--font-mono); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
+
+.donut-wrap { display: grid; grid-template-columns: 200px 1fr; gap: 20px; align-items: center; }
+.donut { width: 200px; height: 200px; position: relative; }
+.donut svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.donut .center { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+.donut .center .big { font-size: 22px; font-weight: 600; font-family: var(--font-mono); letter-spacing: -0.01em; }
+.donut .center .small { font-size: 11px; color: var(--text-subtle); font-family: var(--font-mono); }
+.legend { display: flex; flex-direction: column; gap: 6px; }
+.legend-row { display: grid; grid-template-columns: 10px 1fr 50px 50px; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 6px; }
+.legend-row:hover { background: var(--bg-soft); }
+.legend-row .sw { width: 10px; height: 10px; border-radius: 3px; }
+.legend-row .n { font-size: 12.5px; color: var(--text); font-weight: 500; }
+.legend-row .c, .legend-row .p { font-family: var(--font-mono); font-size: 12px; text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.legend-row .p { color: var(--text); font-weight: 600; }
+
+.stack-bar { height: 36px; border-radius: 8px; overflow: hidden; display: flex; border: 1px solid var(--border); background: var(--bg-soft); }
+.stack-seg { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; font-weight: 600; font-family: var(--font-mono); transition: flex-basis .3s; }
+.stack-legend { display: flex; gap: 18px; margin-top: 10px; flex-wrap: wrap; }
+.stack-legend .item { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--text-muted); }
+.stack-legend .sw { width: 10px; height: 10px; border-radius: 3px; }
+
+.eda-grid { display: grid; grid-template-columns: repeat(12,1fr); gap: 14px; }
+.eda-grid .span-6 { grid-column: span 6; }
+.eda-grid .span-12 { grid-column: span 12; }
+.eda-grid .span-8 { grid-column: span 8; }
+.eda-grid .span-4 { grid-column: span 4; }
+@media (max-width: 980px) { .eda-grid .span-6, .eda-grid .span-8, .eda-grid .span-4 { grid-column: span 12; } }
+
+.filter-bar { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 12px 14px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 14px; flex-wrap: wrap; }
+.filter-group { display: flex; align-items: center; gap: 10px; }
+.filter-group .g-label { font-size: 11.5px; color: var(--text-subtle); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; }
+.q-row { background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; overflow: hidden; transition: border-color .1s; }
+.q-row.open { border-color: var(--accent); }
+.q-head { display: grid; grid-template-columns: 68px 1fr auto; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; }
+.q-head:hover { background: var(--bg-soft); }
+.q-id { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-subtle); font-weight: 600; letter-spacing: 0.04em; }
+.q-title { font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.q-tags { display: flex; gap: 6px; }
+.q-chev { color: var(--text-subtle); transition: transform .2s; margin-left: 10px; }
+.q-row.open .q-chev { transform: rotate(90deg); }
+.q-body { padding: 12px 14px 16px; border-top: 1px dashed var(--border); display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 900px) { .q-body { grid-template-columns: 1fr; } }
+.mini-result { padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; display: grid; grid-template-columns: 20px 1fr auto; gap: 8px; align-items: center; font-size: 12px; background: var(--bg); }
+.mini-result + .mini-result { margin-top: 4px; }
+.mini-result.correct { border-color: color-mix(in oklch, var(--success) 50%, var(--border)); background: color-mix(in oklch, var(--success) 5%, var(--bg-elev)); }
+.mini-result .rnk { font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); }
+.mini-result .check { color: var(--success); display: inline-flex; }
+.mini-result .sim-num { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+.mini-result .body { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.tweaks { position: fixed; right: 20px; bottom: 20px; width: 280px; background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 14px; z-index: 100; transform: translateY(16px); opacity: 0; pointer-events: none; transition: transform .2s, opacity .2s; }
+.tweaks.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
+.tweaks h4 { margin: 0 0 10px; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
+.tweaks h4 .kbd-note { font-size: 10px; color: var(--text-subtle); font-weight: 400; font-family: var(--font-mono); }
+.tweak-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+.tweak-row .l { font-size: 12px; color: var(--text-muted); }
+.color-row { display: flex; gap: 6px; }
+.color-dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; transition: transform .1s, border-color .1s; }
+.color-dot:hover { transform: scale(1.1); }
+.color-dot.active { border-color: var(--text); transform: scale(1.1); }
+
+.loading { display: flex; align-items: center; gap: 8px; padding: 40px; color: var(--text-muted); font-size: 13px; justify-content: center; }
+.loading .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: dotpulse 1s infinite; }
+.loading .dot:nth-child(2) { animation-delay: .15s; }
+.loading .dot:nth-child(3) { animation-delay: .3s; }
+@keyframes dotpulse { 0%,60%,100% { opacity:.25; transform:scale(.8); } 30% { opacity:1; transform:scale(1.1); } }
+
+.hstack { display: flex; align-items: center; gap: 8px; }
+.vstack { display: flex; flex-direction: column; gap: 8px; }
+.grow { flex: 1; }
+.muted { color: var(--text-muted); }
+.mono { font-family: var(--font-mono); }
+.sep-dot { color: var(--text-subtle); margin: 0 6px; }
+.section-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 900px) { .section-row { grid-template-columns: 1fr; } }
+.callout { display: flex; gap: 12px; padding: 14px 16px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--accent-soft); color: var(--accent-ink); }
+.callout .ico { flex-shrink: 0; margin-top: 1px; }
+.callout .t { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.callout .d { font-size: 12.5px; opacity: .85; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+@media (max-width: 1100px) { .hit-grid, .compare-grid, .search-layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+window.APP_DATA = {
+  stats: { total: 21604, train: 19205, val: 2399, depts: 5 },
+  lifecycle: [
+    { key: "puppy",  ko: "자견",   en: "Puppy",  count: 7160 },
+    { key: "adult",  ko: "성견",   en: "Adult",  count: 7275 },
+    { key: "senior", ko: "노령견", en: "Senior", count: 7169 },
+  ],
+  department: [
+    { key: "internal", ko: "내과",   en: "Internal",     pct: 51 },
+    { key: "surgery",  ko: "외과",   en: "Surgery",      pct: 27 },
+    { key: "derm",     ko: "피부과", en: "Dermatology",  pct: 13 },
+    { key: "ophth",    ko: "안과",   en: "Ophthalmology",pct: 5  },
+    { key: "dental",   ko: "치과",   en: "Dental",       pct: 4  },
+  ],
+  diseaseTop: [
+    { name: "기타",               count: 16611 },
+    { name: "중성화수술",         count: 642   },
+    { name: "무릎뼈 탈구",       count: 593   },
+    { name: "중독",               count: 473   },
+    { name: "골절",               count: 408   },
+    { name: "심장사상충",         count: 396   },
+    { name: "자궁축농증",         count: 367   },
+    { name: "외이염",             count: 326   },
+    { name: "위장관폐색",         count: 256   },
+    { name: "아토피성 피부염",    count: 248   },
+  ],
+  metrics: {
+    overall: [
+      { k: "Hit@1", tfidf: 16.0,  bert: 24.0  },
+      { k: "Hit@3", tfidf: 40.0,  bert: 52.0  },
+      { k: "Hit@5", tfidf: 52.0,  bert: 62.0  },
+      { k: "MAP@5", tfidf: 9.35,  bert: 12.87 },
+    ],
+    byLifecycle: [
+      { key: "puppy",  ko: "자견",   n: 17, tfidf: 70.6, bert: 82.4 },
+      { key: "adult",  ko: "성견",   n: 17, tfidf: 47.1, bert: 41.2 },
+      { key: "senior", ko: "노령견", n: 16, tfidf: 37.5, bert: 62.5 },
+    ],
+  },
+  sampleSuggestions: [
+    "눈에 눈곱이 자꾸 끼고 빨갛게 충혈돼요",
+    "산책 후 뒷다리를 절뚝거려요",
+    "귀를 자꾸 긁고 냄새가 나요",
+    "피부에 붉은 발진이 생겼어요",
+    "물을 너무 많이 마시고 소변을 자주 봐요",
+  ],
+  results: {
+    bert: [
+      { rank:1, sim:0.8421, lifecycle:"성견", dept:"내과", disease:"위장염", q:"5살 말티즈가 어제부터 사료를 거부하고 노란 액체를 3번 토했습니다. 물만 조금 마시고 하루 종일 엎드려 있어요.", a:"3일 이상 식욕부진과 구토가 지속되면 탈수·췌장염·이물 섭취를 의심해야 합니다. 특히 노란 위액 구토와 기력 저하가 동반된 경우 가능한 빨리 내원하여 혈액검사와 복부 방사선 촬영을 권장드립니다." },
+      { rank:2, sim:0.8156, lifecycle:"성견", dept:"내과", disease:"췌장염", q:"강아지가 이틀째 아무것도 안 먹고 토하기만 해요. 배를 만지면 아파하는 것 같습니다.", a:"복부 촉진 시 통증 반응은 췌장염의 전형적인 신호입니다. cPL 검사와 복부 초음파가 필요하며, 확진 시 수액 치료·금식·진통 관리가 원칙입니다." },
+      { rank:3, sim:0.7934, lifecycle:"성견", dept:"내과", disease:"기타",   q:"7살 포메라니안이 밥을 조금씩만 먹고 구토가 반복됩니다. 체중이 빠지는 것 같아요.", a:"만성적인 식욕부진과 체중 감소는 내분비 질환, 만성 신장질환, 종양을 배제해야 하는 증상입니다." },
+      { rank:4, sim:0.7712, lifecycle:"노령견",dept:"내과", disease:"신장질환",q:"노견이 최근 물을 많이 마시고 사료를 남깁니다. 가끔 노란 거품을 토해요.", a:"다음다뇨(PU/PD)와 식욕부진은 신장 기능 저하의 초기 신호일 수 있습니다. BUN/Crea, SDMA, 요비중 검사가 우선되어야 합니다." },
+      { rank:5, sim:0.7488, lifecycle:"성견", dept:"내과", disease:"위장염", q:"이물질을 먹은 것 같은데 식욕이 없고 구토를 합니다.", a:"이물 섭취가 의심된다면 구토 유도는 위험할 수 있으므로 먼저 방사선 검사로 위치를 확인해야 합니다." },
+    ],
+    tfidf: [
+      { rank:1, sim:0.6712, lifecycle:"성견", dept:"내과", disease:"기타",        q:"강아지가 기운이 없고 밥을 안 먹습니다. 산책도 싫어해요.", a:"무기력과 식욕부진은 매우 비특이적 증상으로, 감염성 질환부터 내분비·종양까지 폭넓은 감별이 필요합니다." },
+      { rank:2, sim:0.6341, lifecycle:"자견", dept:"내과", disease:"파보바이러스",q:"강아지가 토하고 설사도 해요. 3개월된 자견입니다.", a:"3개월령 자견에서 구토·혈변·식욕부진은 파보바이러스 감염을 반드시 배제해야 합니다." },
+      { rank:3, sim:0.6108, lifecycle:"성견", dept:"내과", disease:"위장염",      q:"강아지 토하고 기운 없어요", a:"단순 위장염인지 구별하기 위해 다른 증상의 동반 여부를 확인하세요." },
+      { rank:4, sim:0.5893, lifecycle:"성견", dept:"외과", disease:"이물 섭취",   q:"강아지가 양말을 삼킨 것 같아요. 토를 계속 해요.", a:"선형 이물은 장 주름 사이에 걸려 장중첩을 일으킬 수 있어 매우 위험합니다. 즉시 방사선 검사가 필요합니다." },
+      { rank:5, sim:0.5624, lifecycle:"노령견",dept:"내과", disease:"기타",       q:"나이든 강아지가 며칠째 밥을 못 먹어요.", a:"노령견의 장기간 식욕부진은 치아·구강 통증, 만성 질환, 종양 등 원인이 다양합니다." },
+    ],
+  },
+  evalQueries: [
+    { id:"Q001", life:"자견",   dept:"내과",   disease:"기타",           title:"예방접종을 어린 시절에 실시하여 6년 동안 건강하게 지내고 있는데, 추가 접종이 필요한지 여쭤봅니다." },
+    { id:"Q002", life:"자견",   dept:"내과",   disease:"기타",           title:"강아지가 이물질을 섭취한 것 같은데, 장내에서 배출되는지 판단하기 어렵습니다." },
+    { id:"Q003", life:"자견",   dept:"내과",   disease:"기타",           title:"중성화한 10세 포메라니안이 어제부터 빈번하게 무른 배변을 봅니다." },
+    { id:"Q004", life:"자견",   dept:"내과",   disease:"기타",           title:"강아지가 기침을 계속하고 콧물도 멈추지 않은 지 꽤 오래됐어요." },
+    { id:"Q005", life:"자견",   dept:"외과",   disease:"자궁축농증",     title:"3세 암컷 포메라니안이 생리 후에도 분비물이 계속 나와요." },
+    { id:"Q006", life:"자견",   dept:"내과",   disease:"기타",           title:"오늘 강아지가 검게 변한 설사를 보았습니다. 접종은 1차만 맞은 상태예요." },
+    { id:"Q007", life:"자견",   dept:"피부과", disease:"외이염",         title:"강아지 귀에 검은색 딱지가 있어요. 닦으려고 하면 아파해요." },
+    { id:"Q008", life:"자견",   dept:"내과",   disease:"기타",           title:"반려견 코코가 만성적인 구토 증상을 나타내고 있어요." },
+    { id:"Q009", life:"자견",   dept:"내과",   disease:"기타",           title:"강아지가 잠을 자다가 숨쉬기 힘들어하는 모습을 보여요. 현재 13세입니다." },
+    { id:"Q010", life:"자견",   dept:"내과",   disease:"기타",           title:"3살 중형견에게 애견 통조림이나 고기를 급여해도 될까요?" },
+    { id:"Q011", life:"자견",   dept:"외과",   disease:"중성화수술",     title:"5살 암컷 강아지 중성화 수술을 고민 중인데, 안 하면 어떤 질병이 생기나요?" },
+    { id:"Q012", life:"자견",   dept:"치과",   disease:"기타",           title:"4개월 된 푸들의 유치가 빠지고 영구치가 나고 있어요." },
+    { id:"Q013", life:"자견",   dept:"내과",   disease:"급성신부전",     title:"강아지가 포도껍질을 먹었어요. 어제부터 오늘까지 괜찮은 것 같은데 걱정됩니다." },
+    { id:"Q014", life:"자견",   dept:"안과",   disease:"기타",           title:"강아지가 다음 주 내안각 수술을 받을 예정인데 마취가 걱정돼요." },
+    { id:"Q015", life:"자견",   dept:"치과",   disease:"기타",           title:"갑자기 강아지 입에서 비릿한 피냄새가 나기 시작했습니다." },
+    { id:"Q016", life:"자견",   dept:"외과",   disease:"무릎뼈 탈구",   title:"강아지에게 비장종양, 슬개골 탈구 3기, 디스크 증상이 확인됐어요." },
+    { id:"Q017", life:"자견",   dept:"내과",   disease:"기타",           title:"반려견 심장이 일반 개보다 두세 배 빠르게 뛰는 것 같아요." },
+    { id:"Q018", life:"성견",   dept:"피부과", disease:"기타",           title:"포메라니안 피부 상태가 갑자기 심하게 악화됐어요." },
+    { id:"Q019", life:"성견",   dept:"내과",   disease:"위장관폐색",     title:"리트리버가 아이스크림을 먹었는데 이상한 행동을 보이고 있어요." },
+    { id:"Q020", life:"성견",   dept:"내과",   disease:"기타",           title:"10살 말티즈가 지난 3월부터 급격히 야위어가고 있어요." },
+    { id:"Q021", life:"성견",   dept:"내과",   disease:"기타",           title:"강아지가 물을 과도하게 마시고 있습니다. 한 번에 다 마셔버려요." },
+    { id:"Q022", life:"성견",   dept:"내과",   disease:"중독",           title:"5개월 비글이 포도를 섭취했어요. 어떻게 해야 하나요?" },
+    { id:"Q023", life:"성견",   dept:"치과",   disease:"치은염",         title:"12개월 골든 리트리버 잇몸에 작은 혹이 몇 달째 있어요." },
+    { id:"Q024", life:"성견",   dept:"외과",   disease:"기타",           title:"10세 강아지 슬개골 탈구 수술 후 회복 관리에 대해 궁금합니다." },
+    { id:"Q025", life:"성견",   dept:"내과",   disease:"기타",           title:"강아지가 최근 숨을 조금 더 빠르게 쉬는 것 같아요." },
+    { id:"Q026", life:"성견",   dept:"내과",   disease:"위장관폐색",     title:"강아지가 목에 무언가 걸린 듯 켁켁거리며 기침을 해요." },
+    { id:"Q027", life:"성견",   dept:"내과",   disease:"기타",           title:"6세 시바견이 계단에서 떨어진 뒤 이상한 행동을 보여요." },
+    { id:"Q028", life:"성견",   dept:"외과",   disease:"기타",           title:"11세 강아지 항문 주변에 혹이 생겼어요." },
+    { id:"Q029", life:"성견",   dept:"내과",   disease:"기타",           title:"산에 다녀온 후 진드기에 물린 것 같아요. 어떻게 해야 하나요?" },
+    { id:"Q030", life:"성견",   dept:"내과",   disease:"기타",           title:"17세 말티즈가 간식 후 일시적으로 기침이 심해져요." },
+    { id:"Q031", life:"성견",   dept:"치과",   disease:"기타",           title:"노견 입냄새가 매우 심각합니다. 껌을 줘도 소용없어요." },
+    { id:"Q032", life:"성견",   dept:"안과",   disease:"기타",           title:"강아지 눈이 뿌옇게 변한 것 같은데 백내장일까요?" },
+    { id:"Q033", life:"성견",   dept:"내과",   disease:"기타",           title:"반려견 오줌에서 검고 날카로운 이물질이 발견됐어요." },
+    { id:"Q034", life:"성견",   dept:"내과",   disease:"기타",           title:"2년 7개월 포메라니안 3.5kg, 건강검진을 어떻게 받아야 하나요?" },
+    { id:"Q035", life:"노령견", dept:"피부과", disease:"외이염",         title:"강아지가 갑자기 귀를 지속적으로 긁어요. 매우 염려됩니다." },
+    { id:"Q036", life:"노령견", dept:"내과",   disease:"기타",           title:"12세 강아지가 갑자기 경련을 일으키고 쓰러졌어요." },
+    { id:"Q037", life:"노령견", dept:"외과",   disease:"기타",           title:"어릴 때부터 슬개골 탈구였는데 최근 3기로 진단받아 수술을 권유받았어요." },
+    { id:"Q038", life:"노령견", dept:"내과",   disease:"기타",           title:"2세 수컷 스피츠가 최근 이전과 다른 행동을 보여요." },
+    { id:"Q039", life:"노령견", dept:"내과",   disease:"기타",           title:"강아지 몸에서 나오는 액체가 오줌인지 자궁 분비물인지 모르겠어요." },
+    { id:"Q040", life:"노령견", dept:"치과",   disease:"기타",           title:"강아지 송곳니 위치에 이빨이 2개인 것 같아요." },
+    { id:"Q041", life:"노령견", dept:"외과",   disease:"자궁축농증",     title:"중성화 수술이 반드시 필요한지, 위험은 없는지 궁금합니다." },
+    { id:"Q042", life:"노령견", dept:"내과",   disease:"기타",           title:"13살 된 시츄 노령견 건강 관리 어떻게 하면 좋을까요?" },
+    { id:"Q043", life:"노령견", dept:"내과",   disease:"기타",           title:"강아지가 몸을 떨고 불안하게 돌아다니며 팔을 뻗는 자세를 취해요." },
+    { id:"Q044", life:"노령견", dept:"내과",   disease:"기타",           title:"4개월 비숑 프리제 2kg, 중성화 적당한 시기가 언제인가요?" },
+    { id:"Q045", life:"노령견", dept:"외과",   disease:"기타",           title:"1년 6개월 말티즈 1.4kg이 문에 부딪혀 다리를 다쳤어요." },
+    { id:"Q046", life:"노령견", dept:"내과",   disease:"기타",           title:"강아지 체중이 11kg인데 적정 체중 7kg보다 너무 많이 나가요." },
+    { id:"Q047", life:"노령견", dept:"내과",   disease:"부신피질기능항진증",title:"강아지가 쿠싱증후군인지 궁금합니다. 피부가 이상하고 배가 부풀어 있어요." },
+    { id:"Q048", life:"노령견", dept:"치과",   disease:"기타",           title:"강아지 치아에 통증이 생기면 어떻게 표현하나요? 발치가 필요한지 궁금해요." },
+    { id:"Q049", life:"노령견", dept:"안과",   disease:"결막염",         title:"강아지 눈꺼풀에 이상한 것이 생겼어요. 눈을 자꾸 비벼요." },
+    { id:"Q050", life:"노령견", dept:"내과",   disease:"기타",           title:"요즘 개들의 평균 수명이 얼마나 되나요? 노령견 건강 관리가 궁금합니다." },
+  ],
+};
+</script>
+
+<script type="text/babel">
+const { createElement: h } = React;
+const svgProps = (size = 16) => ({
+  width: size, height: size, viewBox: "0 0 24 24",
+  fill: "none", stroke: "currentColor", strokeWidth: 1.75,
+  strokeLinecap: "round", strokeLinejoin: "round",
+});
+const Icon = ({ name, size = 16 }) => {
+  const paths = {
+    search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>,
+    data: <><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" /><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" /></>,
+    eval: <><path d="M12 2v4" /><path d="m16.2 7.8 2.8-2.8" /><path d="M18 12h4" /><path d="m16.2 16.2 2.8 2.8" /><path d="M12 18v4" /><path d="m4.8 16.2-2.8 2.8" /><path d="M6 12H2" /><path d="M7.8 7.8 5 5" /><circle cx="12" cy="12" r="4" /></>,
+    list: <><path d="M8 6h13" /><path d="M8 12h13" /><path d="M8 18h13" /><circle cx="4" cy="6" r="1" /><circle cx="4" cy="12" r="1" /><circle cx="4" cy="18" r="1" /></>,
+    eda: <><path d="M3 3v18h18"/><rect x="6" y="12" width="3" height="6"/><rect x="11" y="8" width="3" height="10"/><rect x="16" y="4" width="3" height="14"/></>,
+    sparkles: <><path d="M12 3v4" /><path d="M12 17v4" /><path d="M3 12h4" /><path d="M17 12h4" /><path d="m5.6 5.6 2.8 2.8" /><path d="m15.6 15.6 2.8 2.8" /><path d="m18.4 5.6-2.8 2.8" /><path d="m8.4 15.6-2.8 2.8" /></>,
+    theme: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.9 4.9 1.4 1.4" /><path d="m17.7 17.7 1.4 1.4" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m4.9 19.1 1.4-1.4" /><path d="m17.7 6.3 1.4-1.4" /></>,
+    moon: <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />,
+    arrow: <><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></>,
+    arrowUp: <><path d="M12 19V5" /><path d="m5 12 7-7 7 7" /></>,
+    check: <path d="M20 6 9 17l-5-5" />,
+    close: <><path d="M18 6 6 18" /><path d="m6 6 12 12" /></>,
+    chev: <path d="m9 18 6-6-6-6" />,
+    command: <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z" />,
+    bot: <><rect x="3" y="11" width="18" height="10" rx="2" /><circle cx="12" cy="5" r="2" /><path d="M12 7v4" /><path d="M8 16h.01" /><path d="M16 16h.01" /></>,
+    code: <><path d="m18 16 4-4-4-4" /><path d="m6 8-4 4 4 4" /><path d="m14.5 4-5 16" /></>,
+    info: <><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></>,
+    trending: <><path d="m3 17 6-6 4 4 8-8" /><path d="M14 7h7v7" /></>,
+    clock: <><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>,
+    tweak: <><circle cx="12" cy="12" r="3"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.9 4.9 1.4 1.4"/><path d="m17.7 17.7 1.4 1.4"/></>,
+    paw: <><circle cx="11" cy="4.5" r="2"/><circle cx="17" cy="8" r="2"/><circle cx="5" cy="8" r="2"/><circle cx="19.5" cy="14" r="2"/><circle cx="2.5" cy="14" r="2"/><path d="M7 20c0-3 2-5 5-5s5 2 5 5-2 2-5 2-5 1-5-2z"/></>,
+    filter: <path d="M3 4h18l-7 9v7l-4-2v-5z" />,
+  };
+  return <svg {...svgProps(size)}>{paths[name] || null}</svg>;
+};
+window.Icon = Icon;
+</script>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+function SearchPage({ settings, setSettings }) {
+  const data = window.APP_DATA;
+  const [query, setQuery] = useState("");
+  const [searchState, setSearchState] = useState("empty");
+  const [openIdx, setOpenIdx] = useState({ bert: 0, tfidf: null });
+  const textareaRef = useRef(null);
+
+  const runSearch = (q) => {
+    if (!q || !q.trim()) return;
+    setQuery(q);
+    setSearchState("loading");
+    setTimeout(() => setSearchState("results"), 700);
+  };
+  const reset = () => { setQuery(""); setSearchState("empty"); setOpenIdx({ bert: 0, tfidf: null }); };
+  const handleExampleClick = (text) => {
+    if (textareaRef.current) textareaRef.current.value = text;
+    runSearch(text);
+  };
+  const resultsCount = settings.topK;
+  const lifeTag = (life) => ({ "자견":"life-puppy","성견":"life-adult","노령견":"life-senior" }[life] || "");
+
+  return (
+    <div className="search-layout">
+      <div className="col-main">
+        <div className="search-panel">
+          <div className="search-input-wrap">
+            <div className="glyph"><Icon name="search" size={18} /></div>
+            <textarea ref={textareaRef} className="search-input"
+              placeholder="강아지 증상을 자연스럽게 입력하세요. 예: 강아지가 밥을 안 먹고 자꾸 토해요. 3일째 기운이 없어요."
+              rows={2} defaultValue={query}
+              onKeyDown={(e) => { if (e.key==="Enter"&&!e.shiftKey){e.preventDefault();runSearch(e.currentTarget.value);} }} />
+          </div>
+          <div className="search-foot">
+            <div className="chips">
+              <span className="muted mono" style={{fontSize:11}}>Quick picks</span>
+              {data.sampleSuggestions.slice(0,3).map((s)=>(
+                <button key={s} className="chip" onClick={()=>handleExampleClick(s)}>{s}</button>
+              ))}
+            </div>
+            <div className="hstack">
+              {searchState!=="empty"&&(<button className="btn btn-ghost btn-sm" onClick={reset}><Icon name="close" size={14}/> 초기화</button>)}
+              <button className="btn btn-primary" onClick={()=>runSearch(textareaRef.current?.value||query)}><Icon name="search" size={14}/> 유사 사례 검색</button>
+            </div>
+          </div>
+          {searchState==="empty"&&(
+            <div className="empty-state">
+              <div className="big-icon"><Icon name="bot" size={22}/></div>
+              <h3>증상을 입력해 유사 Q&A를 찾아보세요</h3>
+              <p>21,604건의 수의사 답변 말뭉치에서 TF-IDF와 BERT 두 모델로 동시에 검색합니다.<br/>어떤 모델이 더 적합한 사례를 찾는지 나란히 비교해보세요.</p>
+              <div className="example-grid">
+                {data.sampleSuggestions.map((s,i)=>(
+                  <button key={s} className="example-pill" onClick={()=>handleExampleClick(s)}>
+                    <span className="mono muted" style={{fontSize:11}}>{String(i+1).padStart(2,"0")}</span>
+                    <span style={{flex:1}}>{s}</span>
+                    <span className="arrow"><Icon name="arrow" size={14}/></span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {searchState==="loading"&&(
+            <div className="loading"><span className="dot"/><span className="dot"/><span className="dot"/><span style={{marginLeft:8}}>두 모델에서 유사 문서 검색 중…</span></div>
+          )}
+        </div>
+        {searchState==="results"&&(
+          <div className="results-wrap">
+            <div className="results-head">
+              <div className="results-title">검색 결과<span className="q-preview">· "{query.length>40?query.slice(0,40)+"…":query}"</span></div>
+              <div className="hstack">
+                <span className="pill"><Icon name="clock" size={11}/><span>TF-IDF 0.18s</span><span className="sep-dot">·</span><span>BERT 0.42s</span></span>
+              </div>
+            </div>
+            <div className={settings.mode==="compare"?"compare-grid":""}>
+              {(settings.mode==="compare"||settings.mode==="tfidf")&&(
+                <div className="model-col tfidf">
+                  <div className="model-col-head">
+                    <div className="left"><span className="swatch"/><span>TF-IDF</span><span className="subtle">scikit-learn · 키워드 기반</span></div>
+                    <span className="subtle">top-{resultsCount}</span>
+                  </div>
+                  {data.results.tfidf.slice(0,resultsCount).map((r,i)=>(
+                    <ResultCard key={i} r={r} isOpen={openIdx.tfidf===i} model="tfidf"
+                      onToggle={()=>setOpenIdx({...openIdx,tfidf:openIdx.tfidf===i?null:i})} lifeTag={lifeTag}/>
+                  ))}
+                </div>
+              )}
+              {(settings.mode==="compare"||settings.mode==="bert")&&(
+                <div className="model-col bert">
+                  <div className="model-col-head">
+                    <div className="left"><span className="swatch"/><span>Sentence-BERT</span><span className="subtle">ko-sroberta · 의미 기반</span></div>
+                    <span className="subtle">top-{resultsCount}</span>
+                  </div>
+                  {data.results.bert.slice(0,resultsCount).map((r,i)=>(
+                    <ResultCard key={i} r={r} isOpen={openIdx.bert===i} model="bert"
+                      onToggle={()=>setOpenIdx({...openIdx,bert:openIdx.bert===i?null:i})} lifeTag={lifeTag}/>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+      <aside>
+        <div className="settings-card">
+          <div className="setting-group">
+            <div className="g-label">검색 모드 · Mode</div>
+            <div className="seg stack">
+              {[["compare","TF-IDF vs BERT 비교"],["bert","BERT 단독"],["tfidf","TF-IDF 단독"]].map(([k,l])=>(
+                <button key={k} className={"seg-btn "+(settings.mode===k?"active":"")} onClick={()=>setSettings({...settings,mode:k})}>{l}</button>
+              ))}
+            </div>
+          </div>
+          <div className="setting-group">
+            <div className="g-label">결과 개수 · Top-K</div>
+            <div className="slider-row">
+              <input type="range" min="1" max="5" value={settings.topK} onChange={(e)=>setSettings({...settings,topK:+e.target.value})}/>
+              <span className="val">{settings.topK}</span>
+            </div>
+          </div>
+          <div className="setting-group">
+            <div className="g-label">생애주기 · Lifecycle</div>
+            <div className="seg stack">
+              {[["all","전체"],["puppy","자견"],["adult","성견"],["senior","노령견"]].map(([k,l])=>(
+                <button key={k} className={"seg-btn "+(settings.life===k?"active":"")} onClick={()=>setSettings({...settings,life:k})}>{l}</button>
+              ))}
+            </div>
+          </div>
+          <div className="setting-group">
+            <div className="g-label">모델 정보</div>
+            <div style={{fontSize:11.5,lineHeight:1.7,color:"var(--text-muted)",fontFamily:"var(--font-mono)"}}>
+              <div>· TF-IDF (sklearn)</div><div>· ko-sroberta-multitask</div>
+              <div>· corpus: 19,205 docs</div><div>· eval: 2,399 docs</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function ResultCard({ r, isOpen, model, onToggle, lifeTag }) {
+  return (
+    <div className={"result-card "+(isOpen?"open":"")}>
+      <div className="result-row" onClick={onToggle}>
+        <div className="rank">#{r.rank}</div>
+        <div className="result-body">
+          <div className="result-meta">
+            <span className={"tag "+lifeTag(r.lifecycle)}>{r.lifecycle}</span>
+            <span className="tag dept">{r.dept}</span>
+            <span className="tag disease">{r.disease}</span>
+          </div>
+          <div className="result-q">{r.q}</div>
+        </div>
+        <div className="sim-wrap">
+          <div className="sim-val">{r.sim.toFixed(4)}</div>
+          <div className="sim-bar"><div className="fill" style={{width:(r.sim*100)+"%"}}/></div>
+        </div>
+      </div>
+      {isOpen&&(
+        <div className="result-expand">
+          <div className="block-label">질문 · Question</div>
+          <p className="q-text">{r.q}</p>
+          <div className="block-label">수의사 답변 · Veterinarian</div>
+          <p className="a-text">{r.a}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+window.SearchPage = SearchPage;
+</script>
+
+<script type="text/babel">
+const ThemeContext = React.createContext("light");
+
+function DataPage() {
+  const d = window.APP_DATA;
+  const totalLife = d.lifecycle.reduce((s,x)=>s+x.count,0);
+  const colors = ["var(--accent)","var(--accent-2)","var(--accent-3)","var(--accent-4)","var(--accent-5)"];
+  return (
+    <div className="vstack" style={{gap:20}}>
+      <div className="metric-grid">
+        <div className="metric"><div className="label">전체 Q&A · Total</div><div className="value">{d.stats.total.toLocaleString()}</div><div className="foot">AI Hub · 반려견 말뭉치</div></div>
+        <div className="metric"><div className="label">학습 데이터 · Train</div><div className="value">{d.stats.train.toLocaleString()}</div><div className="foot">{(d.stats.train/d.stats.total*100).toFixed(1)}% of total</div></div>
+        <div className="metric"><div className="label">검증 데이터 · Validation</div><div className="value">{d.stats.val.toLocaleString()}</div><div className="foot">{(d.stats.val/d.stats.total*100).toFixed(1)}% · hit-rate eval</div></div>
+        <div className="metric"><div className="label">진료과 · Departments</div><div className="value">{d.stats.depts}</div><div className="foot">내과 / 외과 / 피부 / 안과 / 치과</div></div>
+      </div>
+      <div className="section-row">
+        <div className="card">
+          <div className="card-head">
+            <div><h4 className="card-title">생애주기 분포 · Lifecycle balance</h4><p className="card-sub">자견 / 성견 / 노령견 — 균형 잡힌 클래스 분포</p></div>
+            <span className="pill"><Icon name="check" size={11}/>Balanced</span>
+          </div>
+          <div className="stack-bar">
+            {d.lifecycle.map((l,i)=>{
+              const pct=(l.count/totalLife)*100;
+              return <div key={l.key} className="stack-seg" style={{flexBasis:pct+"%",background:colors[i]}}>{pct.toFixed(1)}%</div>;
+            })}
+          </div>
+          <div className="stack-legend">
+            {d.lifecycle.map((l,i)=>(
+              <div key={l.key} className="item"><span className="sw" style={{background:colors[i]}}/><span>{l.ko} ({l.en})</span><span className="mono" style={{color:"var(--text)"}}>{l.count.toLocaleString()}</span></div>
+            ))}
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-head">
+            <div><h4 className="card-title">진료과 분포 · Department</h4><p className="card-sub">내과가 전체 절반 이상 — 불균형 주의</p></div>
+            <span className="pill" style={{background:"color-mix(in oklch,var(--warning) 10%,transparent)",color:"var(--warning)",borderColor:"transparent"}}><Icon name="info" size={11}/>Imbalanced</span>
+          </div>
+          <div className="donut-wrap">
+            <DonutChart items={d.department}/>
+            <div className="legend">
+              {d.department.map((x,i)=>(
+                <div key={x.key} className="legend-row">
+                  <span className="sw" style={{background:colors[i]}}/><span className="n">{x.ko}</span>
+                  <span className="c">{x.en}</span><span className="p">{x.pct}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="section-row">
+        <div className="card">
+          <div className="card-head">
+            <div><h4 className="card-title">질병 Top 10 · Long-tail</h4><p className="card-sub">"기타"가 16,611건으로 77% 차지 — 극단적 롱테일</p></div>
+          </div>
+          <div className="vstack" style={{gap:2,marginTop:4}}>
+            {d.diseaseTop.map((x,i)=>{
+              const max=d.diseaseTop[0].count; const pct=(x.count/max)*100;
+              return (
+                <div key={x.name} className="bar-row">
+                  <div className="bar-label">{x.name}</div>
+                  <div className="bar-track"><div className="bar-fill solid" style={{width:pct+"%",background:i===0?"var(--warning)":"var(--accent)"}}/></div>
+                  <div className="bar-val">{x.count.toLocaleString()}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-head"><div><h4 className="card-title">텍스트 길이 통계 · Text length (chars)</h4><p className="card-sub">답변이 질문보다 대체로 20% 긴 경향</p></div></div>
+          <table className="table" style={{marginTop:4}}>
+            <thead><tr><th>통계</th><th>질문</th><th>답변</th></tr></thead>
+            <tbody>
+              <tr><td className="strong">평균 · Mean</td><td className="num">{(d.textStats||{q_mean:329}).q_mean}자</td><td className="num">{(d.textStats||{a_mean:394}).a_mean}자</td></tr>
+              <tr><td className="strong">중앙값 · Median</td><td className="num">{(d.textStats||{q_median:258}).q_median}자</td><td className="num">{(d.textStats||{a_median:317}).a_median}자</td></tr>
+              <tr><td className="strong">최댓값 · Max</td><td className="num">{((d.textStats||{q_max:3208}).q_max).toLocaleString()}자</td><td className="num">{((d.textStats||{a_max:3707}).a_max).toLocaleString()}자</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DonutChart({ items }) {
+  const colors = ["var(--accent)","var(--accent-2)","var(--accent-3)","var(--accent-4)","var(--accent-5)"];
+  const total = items.reduce((s,x)=>s+x.pct,0);
+  const R=68, C=2*Math.PI*R;
+  let offset=0;
+  return (
+    <div className="donut">
+      <svg viewBox="0 0 200 200">
+        <circle cx="100" cy="100" r={R} fill="none" stroke="var(--bg-soft)" strokeWidth="22"/>
+        {items.map((x,i)=>{
+          const len=(x.pct/total)*C;
+          const el=<circle key={x.key} cx="100" cy="100" r={R} fill="none" stroke={colors[i]} strokeWidth="22" strokeDasharray={`${len} ${C-len}`} strokeDashoffset={-offset}/>;
+          offset+=len; return el;
+        })}
+      </svg>
+      <div className="center"><div><div className="big">{items[0].pct}%</div><div className="small">내과 우세</div></div></div>
+    </div>
+  );
+}
+
+function PlotlyChart({ fig, height=280 }) {
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!ref.current || !window.Plotly || !fig) return;
+    const layout = Object.assign({
+      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+      font: { family: "'Pretendard Variable','Inter',sans-serif", size: 12, color: "#09090b" },
+      hoverlabel: { bgcolor: "#ffffff", font: { size: 12 } },
+      autosize: true,
+    }, fig.layout || {});
+    window.Plotly.react(ref.current, fig.data || [], layout, { responsive: true, displayModeBar: false });
+    return () => { try { window.Plotly.purge(ref.current); } catch(e){} };
+  }, [fig]);
+
+  if (!fig) return (
+    <div className="chart-ph" style={{minHeight: height}}>
+      <div className="ph-title">데이터 로딩 중...</div>
+    </div>
+  );
+  return <div ref={ref} style={{height, width:"100%"}}/>;
+}
+
+function ECard({ span, title, desc, fig, height=280 }) {
+  return (
+    <div className={`card ${span}`}>
+      <div className="card-head">
+        <div><h4 className="card-title">{title}</h4><p className="card-sub">{desc}</p></div>
+      </div>
+      <PlotlyChart fig={fig} height={height}/>
+    </div>
+  );
+}
+
+function ImgCard({ span, title, desc, src, height=280 }) {
+  return (
+    <div className={`card ${span}`}>
+      <div className="card-head">
+        <div><h4 className="card-title">{title}</h4><p className="card-sub">{desc}</p></div>
+        <span className="mono" style={{fontSize:10.5,color:"var(--text-subtle)"}}>matplotlib</span>
+      </div>
+      {src
+        ? <img src={src} alt={title}
+            style={{width:"100%",height:height,objectFit:"contain",borderRadius:6,background:"var(--bg-soft)"}}/>
+        : <div className="chart-ph" style={{minHeight:height}}>
+            <div className="ph-title">{title}</div>
+            <span className="ph-badge"><Icon name="code" size={10}/>matplotlib</span>
+          </div>
+      }
+    </div>
+  );
+}
+
+function EdaPage() {
+  const eda = (window.APP_DATA || {}).eda || {};
+  const hasData = Object.keys(eda).length > 0;
+  return (
+    <div className="vstack" style={{gap:14}}>
+      <div className="callout">
+        <span className="ico"><Icon name="info" size={16}/></span>
+        <div>
+          <div className="t">탐색적 데이터 분석 · Exploratory Data Analysis</div>
+          <div className="d">
+            {hasData
+              ? "Plotly 인터랙티브 · matplotlib 정적 차트 — 실데이터 기반"
+              : "run_dashboard.py 실행 시 실데이터 차트가 표시됩니다."}
+          </div>
+        </div>
+      </div>
+      <div className="eda-grid">
+        {/* Row 1: 질병 분포 + 생애주기 */}
+        <ECard span="span-8" height={340}
+          title="질병 롱테일 분포 · Disease Long-tail"
+          desc="상위 15개 질병 — '기타'(77%) 포함 극단적 롱테일 · Plotly"
+          fig={eda.disease_bar}/>
+        <ECard span="span-4" height={340}
+          title="생애주기 분포 · Lifecycle"
+          desc="자견 / 성견 / 노령견 균형 분포 · Plotly"
+          fig={eda.lifecycle_pie}/>
+
+        {/* Row 2: 진료과 Top5 + 키워드 트리맵 */}
+        <ECard span="span-6" height={360}
+          title="진료과별 Top 5 질병"
+          desc="5개 진료과 × 상위 5개 질환 — '기타' 제외 · Plotly"
+          fig={eda.dept_top10}/>
+        <ECard span="span-6" height={420}
+          title="생애주기별 빈출 2-gram 구문"
+          desc="연속 2단어 구문 빈도 — 단독 토큰보다 문맥 표현 · Plotly"
+          fig={eda.word_treemap}/>
+
+        {/* Row 3: 히트맵 + 박스플롯 */}
+        <ECard span="span-6" height={280}
+          title="진료과 × 생애주기 히트맵"
+          desc="교차 빈도 히트맵 — 내과 편중 뚜렷 · Plotly"
+          fig={eda.dept_heatmap}/>
+        <ECard span="span-6" height={280}
+          title="텍스트 길이 박스플롯"
+          desc="생애주기별 질문 길이 분포 · 이상치 포함 · Plotly"
+          fig={eda.text_boxplot}/>
+
+        {/* Row 4: Train/Val 균형 + 길이 산점도 */}
+        <ECard span="span-4" height={280}
+          title="Train / Val 분할 균형"
+          desc="생애주기별 학습·검증 셋 분포 — 균등 분할 확인 · Plotly"
+          fig={eda.train_val_bar}/>
+        <ECard span="span-8" height={300}
+          title="질문 vs 답변 길이 산점도"
+          desc="input × output 길이 상관관계 (샘플 2,000) — 생애주기별 색상 · Plotly"
+          fig={eda.len_scatter}/>
+
+        {/* Row 5: 선버스트 전체 폭 */}
+        <ECard span="span-12" height={460}
+          title="계층 선버스트 · Hierarchy Sunburst"
+          desc="lifeCycle → department → disease 3단계 드릴다운 — 클릭으로 탐색 · Plotly"
+          fig={eda.sunburst}/>
+      </div>
+    </div>
+  );
+}
+
+function EvalPage() {
+  const d = window.APP_DATA;
+  const M = d.metrics;
+  const deltas = M.overall.map(m=>({k:m.k,delta:+(m.bert-m.tfidf).toFixed(2)}));
+  return (
+    <div className="vstack" style={{gap:20}}>
+      <div className="callout">
+        <span className="ico"><Icon name="trending" size={16}/></span>
+        <div>
+          <div className="t">BERT가 전 지표에서 TF-IDF를 상회</div>
+          <div className="d">검증셋 50개 쿼리 (자견 17 · 성견 17 · 노령견 16) 기준. 평가 방식: Hit Rate@k — 동일 disease+lifeCycle 문서가 top-k 내 포함된 비율.</div>
+        </div>
+      </div>
+      <div className="metric-grid">
+        {deltas.map(d_=>(
+          <div className="metric" key={d_.k}>
+            <div className="label">BERT 향상 · {d_.k}</div>
+            <div className="value">+{d_.delta}<span style={{fontSize:16,color:"var(--text-subtle)",marginLeft:4}}>%p</span></div>
+            <div className="foot"><span className="delta up"><Icon name="arrowUp" size={10}/>vs TF-IDF</span></div>
+          </div>
+        ))}
+      </div>
+      <div className="section-row">
+        <div className="card">
+          <div className="card-head"><div><h4 className="card-title">전체 성능 비교 · Overall</h4><p className="card-sub">TF-IDF vs Sentence-BERT (ko-sroberta-multitask)</p></div></div>
+          <div className="group-bars">
+            {M.overall.map(m=>{
+              const scale=(v)=>(v/70)*100;
+              return (
+                <div className="group-item" key={m.k}>
+                  <div className="g-name">{m.k}</div>
+                  <div className="group-bars-inner">
+                    <div className="gb"><span className="gb-label">TF-IDF</span><div className="bar-track" style={{height:20}}><div className="bar-fill tfidf" style={{width:scale(m.tfidf)+"%"}}/></div><span className="gb-val">{m.tfidf.toFixed(2)}%</span></div>
+                    <div className="gb"><span className="gb-label">BERT</span><div className="bar-track" style={{height:20}}><div className="bar-fill bert" style={{width:scale(m.bert)+"%"}}/></div><span className="gb-val">{m.bert.toFixed(2)}%</span></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-head"><div><h4 className="card-title">지표 테이블 · Metrics table</h4><p className="card-sub">델타는 절대 퍼센트포인트(%p)</p></div></div>
+          <table className="table">
+            <thead><tr><th>지표</th><th>TF-IDF</th><th>BERT</th><th>Δ</th></tr></thead>
+            <tbody>
+              {M.overall.map(m=>{
+                const delta=+(m.bert-m.tfidf).toFixed(2);
+                return <tr key={m.k}><td className="strong">{m.k}</td><td className="num">{m.tfidf.toFixed(2)}%</td><td className="num strong">{m.bert.toFixed(2)}%</td><td className="num"><span className="delta up" style={{display:"inline-flex"}}><Icon name="arrowUp" size={10}/>+{delta}</span></td></tr>;
+              })}
+            </tbody>
+          </table>
+          <p style={{fontSize:12,color:"var(--text-muted)",marginTop:12,lineHeight:1.6}}>Hit@k: top-k 내 정답 문서(동일 disease+lifeCycle) 포함 여부의 이진 평균. MAP@5: Mean Average Precision 상위 5개 기준.</p>
+        </div>
+      </div>
+      <div className="card">
+        <div className="card-head"><div><h4 className="card-title">생애주기별 Hit@5 · By lifecycle</h4><p className="card-sub">성견 구간에서만 TF-IDF가 우위 — 키워드 중심 질의 분포로 추정</p></div></div>
+        <div className="group-bars">
+          {M.byLifecycle.map(l=>{
+            const winner=l.bert>l.tfidf?"bert":"tfidf";
+            return (
+              <div className="group-item" key={l.key}>
+                <div className="g-name">{l.ko}<div style={{fontSize:10.5,color:"var(--text-subtle)",fontWeight:400,marginTop:2}}>n={l.n}</div></div>
+                <div className="group-bars-inner">
+                  <div className="gb"><span className="gb-label">TF-IDF</span><div className="bar-track" style={{height:22}}><div className="bar-fill tfidf" style={{width:l.tfidf+"%"}}/></div><span className="gb-val">{l.tfidf.toFixed(1)}%{winner==="tfidf"&&<span style={{marginLeft:4,color:"var(--success)"}}>●</span>}</span></div>
+                  <div className="gb"><span className="gb-label">BERT</span><div className="bar-track" style={{height:22}}><div className="bar-fill bert" style={{width:l.bert+"%"}}/></div><span className="gb-val">{l.bert.toFixed(1)}%{winner==="bert"&&<span style={{marginLeft:4,color:"var(--success)"}}>●</span>}</span></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const lifeMap = { puppy:"자견", adult:"성견", senior:"노령견" };
+const lifeTag2 = (life) => ({"자견":"life-puppy","성견":"life-adult","노령견":"life-senior"}[life]||"");
+
+function MatchingPage() {
+  const d = window.APP_DATA;
+  const [lifeFilter, setLifeFilter] = React.useState("all");
+  const [viewMode, setViewMode] = React.useState("both");
+  const [openId, setOpenId] = React.useState("Q006");
+  const filtered = d.evalQueries.filter(q=>lifeFilter==="all"||lifeMap[lifeFilter]===q.life);
+  return (
+    <div className="vstack" style={{gap:14}}>
+      <div className="filter-bar">
+        <div className="filter-group">
+          <span className="g-label">생애주기</span>
+          <div className="seg">
+            {[["all","전체"],["puppy","자견"],["adult","성견"],["senior","노령견"]].map(([k,l])=>(
+              <button key={k} className={"seg-btn "+(lifeFilter===k?"active":"")} onClick={()=>setLifeFilter(k)} style={{minWidth:60}}>{l}</button>
+            ))}
+          </div>
+        </div>
+        <div className="filter-group">
+          <span className="g-label">표시 방법</span>
+          <div className="seg">
+            {[["tfidf","TF-IDF"],["bert","BERT"],["both","둘 다"]].map(([k,l])=>(
+              <button key={k} className={"seg-btn "+(viewMode===k?"active":"")} onClick={()=>setViewMode(k)} style={{minWidth:70}}>{l}</button>
+            ))}
+          </div>
+        </div>
+        <div className="grow"/>
+        <span className="pill"><Icon name="list" size={11}/><span>{filtered.length}개 쿼리</span></span>
+      </div>
+      {filtered.map(q=>(
+        <EvalQueryRow key={q.id} q={q} isOpen={openId===q.id} onToggle={()=>setOpenId(openId===q.id?null:q.id)} viewMode={viewMode}/>
+      ))}
+    </div>
+  );
+}
+
+function EvalQueryRow({ q, isOpen, onToggle, viewMode }) {
+  const bertResults = makeMiniResults(q,"bert");
+  const tfidfResults = makeMiniResults(q,"tfidf");
+  return (
+    <div className={"q-row "+(isOpen?"open":"")}>
+      <div className="q-head" onClick={onToggle}>
+        <span className="q-id">[{q.id}]</span>
+        <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
+          <div className="q-tags">
+            <span className={"tag "+lifeTag2(q.life)}>{q.life}</span>
+            <span className="tag dept">{q.dept}</span>
+            <span className="tag disease">{q.disease}</span>
+          </div>
+          <span className="sep-dot">·</span>
+          <span className="q-title">{q.title}</span>
+        </div>
+        <span className="q-chev"><Icon name="chev" size={14}/></span>
+      </div>
+      {isOpen&&(
+        <div className="q-body">
+          {(viewMode==="tfidf"||viewMode==="both")&&(
+            <div>
+              <div className="hstack" style={{marginBottom:8}}>
+                <span className="mono" style={{fontSize:11,color:"var(--text-subtle)"}}>TF-IDF · top 5</span>
+                <span className="mono" style={{fontSize:11,color:"var(--success)",marginLeft:"auto"}}>hit: {tfidfResults.filter(r=>r.correct).length}/5</span>
+              </div>
+              {tfidfResults.map((r,i)=><MiniResult key={i} r={r}/>)}
+            </div>
+          )}
+          {(viewMode==="bert"||viewMode==="both")&&(
+            <div>
+              <div className="hstack" style={{marginBottom:8}}>
+                <span className="mono" style={{fontSize:11,color:"var(--accent)"}}>BERT · top 5</span>
+                <span className="mono" style={{fontSize:11,color:"var(--success)",marginLeft:"auto"}}>hit: {bertResults.filter(r=>r.correct).length}/5</span>
+              </div>
+              {bertResults.map((r,i)=><MiniResult key={i} r={r}/>)}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+function MiniResult({ r }) {
+  return (
+    <div className={"mini-result "+(r.correct?"correct":"")}>
+      <span className="rnk">#{r.rank}</span>
+      <div className="body"><span style={{color:"var(--text-muted)",fontSize:11,marginRight:6}}>{r.dept}·{r.disease}</span><span>{r.q}</span></div>
+      <div className="hstack" style={{gap:6}}><span className="sim-num">{r.sim.toFixed(3)}</span>{r.correct&&<span className="check"><Icon name="check" size={13}/></span>}</div>
+    </div>
+  );
+}
+function makeMiniResults(q, model) {
+  // 실데이터가 있으면 사용
+  if (q.results && q.results[model] && q.results[model].length > 0) {
+    const baseSim = model==="bert" ? 0.84 : 0.67;
+    return q.results[model].map((doc, i) => ({
+      rank: i+1,
+      sim: +(baseSim - i*0.03).toFixed(3),
+      correct: doc.disease === q.disease && doc.lifeCycle === q.life,
+      dept: doc.department || q.dept,
+      disease: doc.disease || "기타",
+      q: doc.input || "유사 문서",
+    }));
+  }
+  // fallback 합성 데이터
+  const seed = q.id.charCodeAt(1)+q.id.charCodeAt(2)+q.id.charCodeAt(3);
+  const correctRanks = model==="bert"
+    ? [[1,3],[1],[2,4],[1,5],[3],[1,2],[2],[1,4],[1,3],[2,5],[1],[1,3],[2],[1,4],[1,5]][seed%15]
+    : [[3],[2,5],[4],[3,5],[],[2],[1],[4],[2,5],[3],[4],[2,5],[3],[5],[3]][seed%15];
+  const baseSim = model==="bert"?0.82:0.66;
+  const snippets = ["증상과 관련된 진료 질문 예시 텍스트입니다","비슷한 증상에 대한 보호자의 질문 내용","동일 진료과의 유사 케이스 답변 기록","약간 다른 생애주기의 케이스 매칭","키워드는 일치하나 문맥이 다른 사례"];
+  return Array.from({length:5},(_,i)=>({
+    rank:i+1, sim:baseSim-i*0.04-(seed%5)*0.005,
+    correct:correctRanks.includes(i+1), dept:q.dept,
+    disease:correctRanks.includes(i+1)?q.disease:["기타","위장염","피부염","알레르기"][(seed+i)%4],
+    q:snippets[i],
+  }));
+}
+Object.assign(window,{DataPage,EdaPage,EvalPage,MatchingPage});
+</script>
+
+<script type="text/babel">
+const { useState: useState2, useEffect: useEffect2 } = React;
+const ACCENT_PRESETS = [
+  {name:"Indigo",h:258},{name:"Violet",h:290},{name:"Blue",h:245},{name:"Teal",h:190},{name:"Rose",h:355}
+];
+const NAV_ITEMS = [
+  {id:"search",  num:"01",ko:"증상 검색",     icon:"search"},
+  {id:"data",    num:"02",ko:"데이터 현황",   icon:"data"},
+  {id:"eda",     num:"03",ko:"EDA",           icon:"eda"},
+  {id:"eval",    num:"04",ko:"모델 평가",     icon:"eval"},
+  {id:"matching",num:"05",ko:"매칭 결과 뷰어",icon:"list"},
+];
+const pageDesc = {
+  search:"보호자가 입력한 증상으로 19,205개 Q&A 말뭉치에서 유사 사례를 검색합니다.",
+  data:"AI Hub 반려견 말뭉치의 규모와 분포를 요약합니다.",
+  eda:"생애주기·진료과·질병 차원의 분포와 길이 통계를 시각화합니다.",
+  eval:"TF-IDF와 Sentence-BERT의 Hit@k, MAP@5 성능을 정량 비교합니다.",
+  matching:"평가셋 50개 쿼리별로 각 모델이 반환한 top-5 문서를 탐색합니다.",
+};
+const pageEn = {search:"Search",data:"Data",eda:"Explore",eval:"Evaluation",matching:"Matches"};
+
+function App() {
+  const [page, setPage] = useState2(()=>localStorage.getItem("vet.page")||"search");
+  const [theme, setTheme] = useState2(()=>localStorage.getItem("vet.theme")||"light");
+  const [accentHue, setAccentHue] = useState2(()=>+localStorage.getItem("vet.hue")||258);
+  const [tweaksOn, setTweaksOn] = useState2(false);
+  const [searchSettings, setSearchSettings] = useState2({mode:"compare",topK:3,life:"all"});
+
+  useEffect2(()=>{localStorage.setItem("vet.page",page);},[page]);
+  useEffect2(()=>{document.documentElement.setAttribute("data-theme",theme);localStorage.setItem("vet.theme",theme);},[theme]);
+  useEffect2(()=>{document.documentElement.style.setProperty("--accent-h",accentHue);localStorage.setItem("vet.hue",accentHue);},[accentHue]);
+
+  const active = NAV_ITEMS.find(n=>n.id===page)||NAV_ITEMS[0];
+  return (
+    <div className="app">
+      <aside className="sidebar">
+        <div className="sidebar-brand">
+          <div className="logo">V</div>
+          <div><div className="title">Vet Match</div><div className="sub">ko-sroberta · tf-idf</div></div>
+        </div>
+        <div className="sidebar-section">Pages</div>
+        <nav className="nav">
+          {NAV_ITEMS.map(it=>(
+            <button key={it.id} className={"nav-item "+(page===it.id?"active":"")} onClick={()=>setPage(it.id)}>
+              <span className="num">{it.num}</span><Icon name={it.icon} size={14}/><span className="label">{it.ko}</span>
+              <span className="chev"><Icon name="chev" size={12}/></span>
+            </button>
+          ))}
+        </nav>
+        <div className="sidebar-section">Dataset</div>
+        <div style={{padding:"0 16px 12px",fontSize:11.5,color:"var(--text-muted)",lineHeight:1.7,fontFamily:"var(--font-mono)"}}>
+          <div>AI Hub · 반려견 말뭉치</div>
+          <div style={{color:"var(--text-subtle)"}}>{(window.APP_DATA.stats.total||21604).toLocaleString()} Q&A · {window.APP_DATA.stats.depts||5} depts</div>
+          <div style={{color:"var(--text-subtle)"}}>v2025.04 · eval n=50</div>
+        </div>
+      </aside>
+      <main className="main">
+        <header className="topbar">
+          <div className="breadcrumb">
+            <Icon name="paw" size={14}/><span>반려견 증상 매칭</span>
+            <span className="sep">/</span><span className="curr">{active.ko}</span>
+            <span className="mono" style={{color:"var(--text-subtle)",marginLeft:6,fontSize:11.5}}>{pageEn[active.id]}</span>
+          </div>
+          <div className="topbar-spacer"/>
+          <span className="pill live"><span className="dot"/><span>BERT ready</span><span className="sep-dot">·</span><span>TF-IDF ready</span></span>
+          <button className="icon-btn" title="Toggle theme" onClick={()=>setTheme(t=>t==="dark"?"light":"dark")}>
+            <Icon name={theme==="dark"?"theme":"moon"} size={16}/>
+          </button>
+          <button className="icon-btn" title="Tweaks" onClick={()=>setTweaksOn(v=>!v)}>
+            <Icon name="tweak" size={16}/>
+          </button>
+        </header>
+        <div className="content">
+          <div className="page-head">
+            <div>
+              <h2 className="page-title">{active.ko}<span style={{color:"var(--text-subtle)",fontWeight:400,fontSize:16,marginLeft:6}}>{pageEn[active.id]}</span></h2>
+              <p className="page-sub">{pageDesc[active.id]}</p>
+            </div>
+            {active.id==="search"&&<span className="pill"><Icon name="command" size={11}/>ko-sroberta-multitask</span>}
+          </div>
+          <ThemeContext.Provider value={theme}>
+          {page==="search"   && <SearchPage settings={searchSettings} setSettings={setSearchSettings}/>}
+          {page==="data"     && <DataPage/>}
+          {page==="eda"      && <EdaPage/>}
+          {page==="eval"     && <EvalPage/>}
+          {page==="matching" && <MatchingPage/>}
+          </ThemeContext.Provider>
+        </div>
+      </main>
+      <TweaksPanel open={tweaksOn} theme={theme} setTheme={setTheme} accentHue={accentHue} setAccentHue={setAccentHue} onClose={()=>setTweaksOn(false)}/>
+    </div>
+  );
+}
+
+function TweaksPanel({ open, theme, setTheme, accentHue, setAccentHue, onClose }) {
+  return (
+    <div className={"tweaks "+(open?"open":"")}>
+      <h4><span><Icon name="tweak" size={13}/> &nbsp;Tweaks</span><span className="kbd-note">live preview</span></h4>
+      <div className="tweak-row">
+        <span className="l">테마 · Theme</span>
+        <div className="seg" style={{padding:2}}>
+          <button className={"seg-btn "+(theme==="light"?"active":"")} onClick={()=>setTheme("light")} style={{padding:"4px 10px"}}>Light</button>
+          <button className={"seg-btn "+(theme==="dark"?"active":"")} onClick={()=>setTheme("dark")} style={{padding:"4px 10px"}}>Dark</button>
+        </div>
+      </div>
+      <div className="tweak-row">
+        <span className="l">액센트 · Accent</span>
+        <div className="color-row">
+          {ACCENT_PRESETS.map(p=>(
+            <div key={p.h} className={"color-dot "+(accentHue===p.h?"active":"")} title={p.name}
+              style={{background:`oklch(0.6 0.22 ${p.h})`}} onClick={()=>setAccentHue(p.h)}/>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App/>);
+</script>
+</body>
+</html>

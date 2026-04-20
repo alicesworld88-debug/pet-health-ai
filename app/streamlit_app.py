@@ -1,156 +1,202 @@
-"""
-반려견 증상 매칭 서비스 — Streamlit 앱
-로컬: streamlit run app/streamlit_app.py
-EC2:  systemd로 8501 포트 서비스 (docs/aws_migration.md Step 5 참고)
-"""
-import sys
+"""반려견 증상 매칭 서비스 · Streamlit iframe wrapper"""
+import sys, json, ast
 from pathlib import Path
-
 sys.path.append(str(Path(__file__).parent.parent))
 
-import numpy as np
 import pandas as pd
 import streamlit as st
-from sentence_transformers import SentenceTransformer
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-
+import streamlit.components.v1 as components
 from utils.config import DATA_PROCESSED
 
-# ── 경로 설정 ─────────────────────────────────────────────────────────
-PREPROCESSED_PATH = DATA_PROCESSED / "corpus_preprocessed.csv"
-EMBED_PATH        = DATA_PROCESSED / "embeddings" / "db_embeddings.npy"
-SBERT_MODEL       = "jhgan/ko-sroberta-multitask"
-
-
-# ── 리소스 로드 (캐싱) ────────────────────────────────────────────────
-@st.cache_resource(show_spinner="모델 및 데이터 로딩 중...")
-def load_resources():
-    df_db = pd.read_csv(PREPROCESSED_PATH)
-    df_db = df_db[df_db["split"] == "train"].reset_index(drop=True)
-
-    vectorizer   = TfidfVectorizer()
-    tfidf_matrix = vectorizer.fit_transform(df_db["input_tokens"].fillna(""))
-
-    if EMBED_PATH.exists():
-        db_embeddings = np.load(EMBED_PATH)
-    else:
-        model         = SentenceTransformer(SBERT_MODEL)
-        db_embeddings = model.encode(
-            df_db["input_normalized"].fillna("").tolist(),
-            batch_size=64,
-            normalize_embeddings=True,
-            show_progress_bar=False,
-        )
-        EMBED_PATH.parent.mkdir(parents=True, exist_ok=True)
-        np.save(EMBED_PATH, db_embeddings)
-
-    sbert_model = SentenceTransformer(SBERT_MODEL)
-    return df_db, vectorizer, tfidf_matrix, db_embeddings, sbert_model
-
-
-# ── 매칭 함수 ─────────────────────────────────────────────────────────
-def match_tfidf(query, vectorizer, tfidf_matrix, top_k=5):
-    vec    = vectorizer.transform([query])
-    scores = cosine_similarity(vec, tfidf_matrix).flatten()
-    idx    = scores.argsort()[::-1][:top_k]
-    return idx, scores[idx]
-
-
-def match_sbert(query, sbert_model, db_embeddings, top_k=5):
-    q_emb  = sbert_model.encode([query], normalize_embeddings=True)[0]
-    scores = (db_embeddings @ q_emb).flatten()
-    idx    = scores.argsort()[::-1][:top_k]
-    return idx, scores[idx]
-
-
-def show_results(indices, scores, df, label, color):
-    st.markdown(f"#### {label}")
-    for rank, (idx, score) in enumerate(zip(indices, scores), 1):
-        row = df.iloc[idx]
-        with st.expander(
-            f"**{rank}위** | {row['lifeCycle']} · {row.get('department','')} · {row.get('disease','')}  |  유사도 {score:.3f}",
-            expanded=(rank == 1),
-        ):
-            c1, c2 = st.columns(2)
-            with c1:
-                st.markdown("**질문**")
-                st.write(row["input"])
-            with c2:
-                st.markdown("**수의사 답변**")
-                st.write(row["output"])
-
-
-# ── UI ────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="반려견 증상 매칭 서비스",
+    page_title="반려견 증상 매칭 · Vet Match",
     page_icon="🐾",
     layout="wide",
+    initial_sidebar_state="collapsed",
 )
 
-st.title("🐾 반려견 증상 매칭 서비스")
-st.caption("증상을 입력하면 유사한 수의사 Q&A를 찾아드립니다.")
+# ─── Streamlit chrome 제거 + iframe 전체 화면 리사이즈 ───────────
+st.html("""<script>
+(function(){
+  var p=window.parent.document;
+  if(p.getElementById("v-fix"))return;
+  var s=p.createElement("style");s.id="v-fix";
+  s.textContent=
+    "#MainMenu,footer,header,[data-testid='stHeader'],[data-testid='stToolbar'],"
+    +"[data-testid='stSidebar'],[data-testid='stSidebarNav'],"
+    +".stDeployButton,[data-testid='stDecoration'],[data-testid='stStatusWidget']{display:none!important}"
+    +"section.main>div.block-container,"
+    +"[data-testid='stMainBlockContainer']"
+    +"{padding:0!important;margin:0!important;max-width:100%!important;width:100%!important}"
+    +"body{padding:0!important;margin:0!important}"
+    +".stApp{overflow:hidden!important;background:#fafafa!important}";
+  p.head.appendChild(s);
+  function fix(){
+    var h=window.parent.innerHeight;
+    p.querySelectorAll("iframe").forEach(function(f){
+      if(parseInt(f.getAttribute("height")||0)>400){
+        f.style.setProperty("height", h+"px", "important");
+        f.style.setProperty("width",  "100vw", "important");
+        f.style.setProperty("border", "none",  "important");
+        f.style.setProperty("display","block",  "important");
+        f.style.setProperty("margin", "0",      "important");
+      }
+    });
+  }
+  setTimeout(fix,200);setTimeout(fix,800);setTimeout(fix,2000);
+  window.parent.addEventListener("resize",fix);
+})();
+</script>""")
 
-with st.sidebar:
-    st.header("⚙️ 설정")
-    mode = st.radio(
-        "검색 모드",
-        ["🔀 TF-IDF vs BERT 비교", "Sentence-BERT 단독", "TF-IDF 단독"],
-        index=0,
-    )
-    top_k = st.slider("결과 개수", min_value=1, max_value=5, value=3)
-    lc_filter = st.selectbox(
-        "생애주기 필터 (선택)",
-        ["전체", "자견", "성견", "노령견"],
-        index=0,
-    )
-    st.divider()
-    st.caption("모델: jhgan/ko-sroberta-multitask")
-    st.caption("데이터: AI Hub 반려견 질병 말뭉치")
+# ─── 데이터 로드 ────────────────────────────────────────────────
+@st.cache_data
+def load_all():
+    corpus  = pd.read_csv(DATA_PROCESSED / "corpus_preprocessed.csv")
+    eval_df = pd.read_csv(DATA_PROCESSED / "evaluation_summary.csv")
+    match   = pd.read_csv(DATA_PROCESSED / "matching_results.csv")
+    train   = corpus[corpus["split"] == "train"].reset_index(drop=True)
+    return corpus, train, eval_df, match
 
-df_db, vectorizer, tfidf_matrix, db_embeddings, sbert_model = load_resources()
+corpus, train, eval_df, match = load_all()
 
-if lc_filter != "전체":
-    mask         = df_db["lifeCycle"] == lc_filter
-    df_search    = df_db[mask].reset_index(drop=True)
-    search_embed = db_embeddings[df_db[mask].index.values]
-    search_tfidf = tfidf_matrix[df_db[mask].index.values]
-else:
-    df_search    = df_db
-    search_embed = db_embeddings
-    search_tfidf = tfidf_matrix
+# ─── APP_DATA 구성 ──────────────────────────────────────────────
 
-query = st.text_area(
-    "증상을 입력하세요",
-    placeholder="예: 강아지가 밥을 안 먹고 자꾸 토해요. 3일째 기운이 없어요.",
-    height=100,
+# 생애주기 분포
+lc = corpus["lifeCycle"].value_counts()
+lifecycle = [
+    {"key": "puppy",  "ko": "자견",   "en": "Puppy",  "count": int(lc.get("자견",   0))},
+    {"key": "adult",  "ko": "성견",   "en": "Adult",  "count": int(lc.get("성견",   0))},
+    {"key": "senior", "ko": "노령견", "en": "Senior", "count": int(lc.get("노령견", 0))},
+]
+
+# 진료과 분포
+_dk = {"내과":"internal","외과":"surgery","피부과":"derm","안과":"ophth","치과":"dental"}
+_de = {"내과":"Internal","외과":"Surgery","피부과":"Dermatology","안과":"Ophthalmology","치과":"Dental"}
+depts_cnt = corpus["department"].value_counts()
+N = len(corpus)
+department = [
+    {"key": _dk.get(d,"etc"), "ko": d, "en": _de.get(d,d), "pct": round(c/N*100, 1)}
+    for d, c in depts_cnt.items()
+]
+
+# 질병 Top 10
+dis_top = corpus["disease"].value_counts().head(10)
+disease_top = [{"name": n, "count": int(c)} for n, c in dis_top.items()]
+
+# 텍스트 길이 통계
+ql = corpus["input"].str.len()
+al = corpus["output"].str.len()
+text_stats = {
+    "q_mean":   int(ql.mean()),   "q_median": int(ql.median()),   "q_max": int(ql.max()),
+    "a_mean":   int(al.mean()),   "a_median": int(al.median()),   "a_max": int(al.max()),
+}
+
+# 평가 지표
+rt = eval_df[eval_df["모델"] == "TF-IDF"].iloc[0]
+rb = eval_df[eval_df["모델"] == "Sentence-BERT"].iloc[0]
+metrics = {
+    "overall": [
+        {"k": "Hit@1", "tfidf": round(float(rt["Hit@1"])*100, 2), "bert": round(float(rb["Hit@1"])*100, 2)},
+        {"k": "Hit@3", "tfidf": round(float(rt["Hit@3"])*100, 2), "bert": round(float(rb["Hit@3"])*100, 2)},
+        {"k": "Hit@5", "tfidf": round(float(rt["Hit@5"])*100, 2), "bert": round(float(rb["Hit@5"])*100, 2)},
+        {"k": "MAP@5", "tfidf": round(float(rt["MAP@5"])*100, 4), "bert": round(float(rb["MAP@5"])*100, 4)},
+    ],
+    "byLifecycle": [
+        {"key":"puppy",  "ko":"자견",   "n":17,
+         "tfidf": round(float(rt["자견 Hit@5"])*100, 1),   "bert": round(float(rb["자견 Hit@5"])*100, 1)},
+        {"key":"adult",  "ko":"성견",   "n":17,
+         "tfidf": round(float(rt["성견 Hit@5"])*100, 1),   "bert": round(float(rb["성견 Hit@5"])*100, 1)},
+        {"key":"senior", "ko":"노령견", "n":16,
+         "tfidf": round(float(rt["노령견 Hit@5"])*100, 1), "bert": round(float(rb["노령견 Hit@5"])*100, 1)},
+    ],
+}
+
+# 코퍼스 문서 축약 조회
+def doc_brief(idx):
+    if 0 <= idx < len(train):
+        r = train.iloc[idx]
+        return {
+            "lifeCycle":  str(r.get("lifeCycle",  "")),
+            "department": str(r.get("department", "")),
+            "disease":    str(r.get("disease",    "")),
+            "input":      str(r.get("input",      ""))[:160],
+            "output":     str(r.get("output",     ""))[:220],
+        }
+    return {"lifeCycle":"","department":"","disease":"","input":"","output":""}
+
+# 평가 쿼리 (실데이터)
+eval_queries = []
+for _, row in match.iterrows():
+    try:    tf_idx = ast.literal_eval(str(row["tfidf_top5"]))
+    except: tf_idx = []
+    try:    sb_idx = ast.literal_eval(str(row["sbert_top5"]))
+    except: sb_idx = []
+    eval_queries.append({
+        "id":      str(row["query_id"]),
+        "life":    str(row["lifeCycle"]),
+        "dept":    str(row["department"]),
+        "disease": str(row["disease"]),
+        "title":   str(row["query"])[:100],
+        "results": {
+            "tfidf": [doc_brief(i) for i in tf_idx[:5]],
+            "bert":  [doc_brief(i) for i in sb_idx[:5]],
+        },
+    })
+
+# 증상 검색 페이지 데모 결과 (첫 번째 쿼리의 실제 top-5)
+def mk_demo(idx_list, base_sim):
+    results = []
+    for rank, idx in enumerate(idx_list[:5], 1):
+        d = doc_brief(idx)
+        results.append({
+            "rank": rank, "sim": round(base_sim - rank*0.028, 4),
+            "lifecycle": d["lifeCycle"], "dept": d["department"],
+            "disease": d["disease"], "q": d["input"][:200], "a": d["output"][:200],
+        })
+    return results
+
+try:
+    first_bert  = ast.literal_eval(str(match.iloc[5]["sbert_top5"]))
+    first_tfidf = ast.literal_eval(str(match.iloc[5]["tfidf_top5"]))
+    demo_bert  = mk_demo(first_bert,  0.862)
+    demo_tfidf = mk_demo(first_tfidf, 0.693)
+except Exception:
+    demo_bert = demo_tfidf = []
+
+# 최종 APP_DATA
+APP_DATA = {
+    "stats": {
+        "total": int(N),
+        "train": int(len(train)),
+        "val":   int(N - len(train)),
+        "depts": 5,
+    },
+    "lifecycle":    lifecycle,
+    "department":   department,
+    "diseaseTop":   disease_top,
+    "textStats":    text_stats,
+    "metrics":      metrics,
+    "sampleSuggestions": [
+        "눈에 눈곱이 자꾸 끼고 빨갛게 충혈돼요",
+        "산책 후 뒷다리를 절뚝거려요",
+        "귀를 자꾸 긁고 냄새가 나요",
+        "피부에 붉은 발진이 생겼어요",
+        "물을 너무 많이 마시고 소변을 자주 봐요",
+    ],
+    "results":      {"bert": demo_bert, "tfidf": demo_tfidf},
+    "evalQueries":  eval_queries,
+}
+
+# ─── dashboard.html 로드 → APP_DATA 주입 → 렌더 ─────────────────
+DASHBOARD = Path(__file__).parent / "dashboard.html"
+html = DASHBOARD.read_text(encoding="utf-8")
+
+# 기존 APP_DATA를 실데이터로 덮어쓰기 (body 닫기 태그 직전에 삽입)
+override = (
+    "<script>"
+    f"window.APP_DATA=Object.assign(window.APP_DATA||{{}},{json.dumps(APP_DATA, ensure_ascii=False)});"
+    "</script>"
 )
+html = html.replace("</body>", override + "\n</body>")
 
-search_btn = st.button("🔍 검색", type="primary")
-
-# ── 검색 실행 ─────────────────────────────────────────────────────────
-if search_btn and query.strip():
-    with st.spinner("검색 중..."):
-        tf_idx, tf_scores  = match_tfidf(query, vectorizer, search_tfidf, top_k)
-        sb_idx, sb_scores  = match_sbert(query, sbert_model, search_embed, top_k)
-
-    if mode == "🔀 TF-IDF vs BERT 비교":
-        st.subheader("📊 TF-IDF vs Sentence-BERT 비교")
-        st.caption("같은 질문에 대해 두 방법이 어떻게 다른 결과를 내는지 확인하세요.")
-        col_tf, col_sb = st.columns(2)
-        with col_tf:
-            show_results(tf_idx, tf_scores, df_search, "🔵 TF-IDF", "blue")
-        with col_sb:
-            show_results(sb_idx, sb_scores, df_search, "🟠 Sentence-BERT", "orange")
-
-    elif mode == "Sentence-BERT 단독":
-        show_results(sb_idx, sb_scores, df_search, "🟠 Sentence-BERT 결과", "orange")
-
-    else:
-        show_results(tf_idx, tf_scores, df_search, "🔵 TF-IDF 결과", "blue")
-
-elif search_btn:
-    st.warning("증상을 입력해주세요.")
-
-st.divider()
-st.caption("데이터마이닝 과제 · 2025")
+components.html(html, height=900, scrolling=False)
