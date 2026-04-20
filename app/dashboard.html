@@ -214,10 +214,12 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .model-col-head .left { display: flex; align-items: center; gap: 8px; }
 .model-col-head .swatch { width: 10px; height: 10px; border-radius: 3px; }
 .model-col-head .subtle { font-weight: 400; font-size: 11.5px; color: var(--text-subtle); font-family: var(--font-mono); }
-.model-col.bert .model-col-head { background: var(--accent-soft); color: var(--accent-ink); border-color: transparent; }
-.model-col.bert .model-col-head .swatch { background: var(--accent); }
-.model-col.tfidf .model-col-head { background: var(--compare-soft); color: var(--text); }
-.model-col.tfidf .model-col-head .swatch { background: var(--compare); }
+.model-col.bert .model-col-head { background: #eeedf9; color: #4f4ba0; border-color: transparent; }
+.model-col.bert .model-col-head .swatch { background: #a8a4f0; }
+.model-col.tfidf .model-col-head { background: #f1f2f4; color: var(--text); }
+.model-col.tfidf .model-col-head .swatch { background: #94a3b8; }
+:root[data-theme="dark"] .model-col.bert .model-col-head { background: #252347; color: #c9c6f5; }
+:root[data-theme="dark"] .model-col.tfidf .model-col-head { background: #1e2026; }
 .result-card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-elev); overflow: hidden; transition: border-color .1s; }
 .result-card:hover { border-color: var(--border-strong); }
 .result-card.open { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 12%, transparent); }
@@ -227,12 +229,12 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .result-body { min-width: 0; }
 .result-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
 .tag { display: inline-flex; padding: 2px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 500; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.04em; border: 1px solid var(--border); color: var(--text-muted); background: var(--bg-soft); }
-.tag.life-puppy  { color: oklch(0.48 0.16 40);  background: oklch(0.96 0.04 40); border-color: transparent; }
-.tag.life-adult  { color: oklch(0.42 0.14 200); background: oklch(0.96 0.03 200); border-color: transparent; }
-.tag.life-senior { color: oklch(0.4 0.1 280);   background: oklch(0.95 0.04 280); border-color: transparent; }
-:root[data-theme="dark"] .tag.life-puppy  { color: oklch(0.82 0.14 40);  background: oklch(0.28 0.08 40); }
-:root[data-theme="dark"] .tag.life-adult  { color: oklch(0.82 0.12 200); background: oklch(0.25 0.06 200); }
-:root[data-theme="dark"] .tag.life-senior { color: oklch(0.82 0.1 280);  background: oklch(0.26 0.07 280); }
+.tag.life-puppy  { color: #4f4ba0; background: #eeedf9; border-color: transparent; }
+.tag.life-adult  { color: #2a7b7b; background: #d4f2f2; border-color: transparent; }
+.tag.life-senior { color: #7a5f10; background: #fbf0cc; border-color: transparent; }
+:root[data-theme="dark"] .tag.life-puppy  { color: #c9c6f5; background: #252347; }
+:root[data-theme="dark"] .tag.life-adult  { color: #7dd4d4; background: #1a3636; }
+:root[data-theme="dark"] .tag.life-senior { color: #e8c97a; background: #3a3010; }
 .tag.dept { color: var(--text); background: var(--bg-soft); }
 .tag.disease { color: var(--accent-ink); background: var(--accent-soft); border-color: transparent; }
 .result-q { font-size: 13px; line-height: 1.5; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -240,8 +242,8 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .sim-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; min-width: 78px; }
 .sim-val { font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
 .sim-bar { width: 64px; height: 4px; background: var(--bg-soft); border-radius: 2px; overflow: hidden; }
-.sim-bar .fill { height: 100%; background: var(--accent); border-radius: 2px; }
-.model-col.tfidf .sim-bar .fill { background: var(--compare); }
+.sim-bar .fill { height: 100%; background: #a8a4f0; border-radius: 2px; }
+.model-col.tfidf .sim-bar .fill { background: #94a3b8; }
 .result-expand { padding: 0 14px 14px; border-top: 1px dashed var(--border); margin-top: 4px; }
 .result-expand .block-label { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.08em; margin: 14px 0 6px; }
 .result-expand .q-text { font-size: 13px; line-height: 1.6; color: var(--text); margin: 0; }
@@ -268,9 +270,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .bar-row .bar-val { font-family: var(--font-mono); font-size: 12px; color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
 .bar-track { position: relative; height: 22px; background: var(--bg-soft); border-radius: 4px; overflow: hidden; }
 .bar-fill { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 4px; transition: width .6s cubic-bezier(.2,.8,.2,1); }
-.bar-fill.bert { background: var(--accent); }
-.bar-fill.tfidf { background: var(--compare); }
-.bar-fill.solid { background: var(--accent); }
+.bar-fill.bert  { background: #a8a4f0; }
+.bar-fill.tfidf { background: #94a3b8; }
+.bar-fill.solid { background: #a8a4f0; }
 
 .group-bars { display: flex; flex-direction: column; gap: 18px; padding: 6px 4px; }
 .group-item { display: grid; grid-template-columns: 72px 1fr; align-items: center; gap: 12px; }
@@ -377,14 +379,14 @@ window.APP_DATA = {
     { key: "senior", ko: "노령견", en: "Senior", count: 7169 },
   ],
   department: [
-    { key: "internal", ko: "내과",   en: "Internal",     pct: 51 },
-    { key: "surgery",  ko: "외과",   en: "Surgery",      pct: 27 },
-    { key: "derm",     ko: "피부과", en: "Dermatology",  pct: 13 },
-    { key: "ophth",    ko: "안과",   en: "Ophthalmology",pct: 5  },
-    { key: "dental",   ko: "치과",   en: "Dental",       pct: 4  },
+    { key: "internal", ko: "내과",   en: "Internal",      pct: 51.1 },
+    { key: "surgery",  ko: "외과",   en: "Surgery",       pct: 26.7 },
+    { key: "derm",     ko: "피부과", en: "Dermatology",   pct: 13.1 },
+    { key: "ophth",    ko: "안과",   en: "Ophthalmology", pct: 5.0  },
+    { key: "dental",   ko: "치과",   en: "Dental",        pct: 4.1  },
   ],
   diseaseTop: [
-    { name: "기타",               count: 16611 },
+    { name: "기타",               count: 16613 },
     { name: "중성화수술",         count: 642   },
     { name: "무릎뼈 탈구",       count: 593   },
     { name: "중독",               count: 473   },
@@ -394,7 +396,13 @@ window.APP_DATA = {
     { name: "외이염",             count: 326   },
     { name: "위장관폐색",         count: 256   },
     { name: "아토피성 피부염",    count: 248   },
+    { name: "방광염",             count: 228   },
+    { name: "결막염",             count: 152   },
+    { name: "부신피질기능항진증", count: 129   },
+    { name: "제3안검탈출증",      count: 108   },
+    { name: "유루증",             count: 89    },
   ],
+  textStats: { q_mean: 330, q_median: 258, q_max: 3208, a_mean: 394, a_median: 317, a_max: 3707 },
   metrics: {
     overall: [
       { k: "Hit@1", tfidf: 16.0,  bert: 24.0  },
@@ -703,7 +711,7 @@ const ThemeContext = React.createContext("light");
 function DataPage() {
   const d = window.APP_DATA;
   const totalLife = d.lifecycle.reduce((s,x)=>s+x.count,0);
-  const colors = ["var(--accent)","var(--accent-2)","var(--accent-3)","var(--accent-4)","var(--accent-5)"];
+  const colors = ["#a8a4f0","#7dd4d4","#85c99a","#e8c97a","#f0a080"];
   return (
     <div className="vstack" style={{gap:20}}>
       <div className="metric-grid">
@@ -759,7 +767,7 @@ function DataPage() {
               return (
                 <div key={x.name} className="bar-row">
                   <div className="bar-label">{x.name}</div>
-                  <div className="bar-track"><div className="bar-fill solid" style={{width:pct+"%",background:i===0?"var(--warning)":"var(--accent)"}}/></div>
+                  <div className="bar-track"><div className="bar-fill solid" style={{width:pct+"%",background:i===0?"#e8c97a":"#a8a4f0"}}/></div>
                   <div className="bar-val">{x.count.toLocaleString()}</div>
                 </div>
               );
@@ -783,7 +791,7 @@ function DataPage() {
 }
 
 function DonutChart({ items }) {
-  const colors = ["var(--accent)","var(--accent-2)","var(--accent-3)","var(--accent-4)","var(--accent-5)"];
+  const colors = ["#a8a4f0","#7dd4d4","#85c99a","#e8c97a","#f0a080"];
   const total = items.reduce((s,x)=>s+x.pct,0);
   const R=68, C=2*Math.PI*R;
   let offset=0;
@@ -1141,7 +1149,7 @@ const pageEn = {search:"Search",data:"Data",eda:"Explore",eval:"Evaluation",matc
 function App() {
   const [page, setPage] = useState2(()=>localStorage.getItem("vet.page")||"search");
   const [theme, setTheme] = useState2(()=>localStorage.getItem("vet.theme")||"light");
-  const [accentHue, setAccentHue] = useState2(()=>+localStorage.getItem("vet.hue")||258);
+  const [accentHue, setAccentHue] = useState2(()=>+localStorage.getItem("vet.hue")||270);
   const [tweaksOn, setTweaksOn] = useState2(false);
   const [searchSettings, setSearchSettings] = useState2({mode:"compare",topK:3,life:"all"});
 
