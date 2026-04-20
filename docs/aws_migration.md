@@ -13,8 +13,47 @@
     ↓                               ↓
 Jupyter (로컬)          →      SageMaker Notebook (BERT 임베딩)
     ↓                               ↓
-Streamlit (로컬)        →      EC2 t2.micro (Streamlit 데모)
+run_dashboard.py (로컬) →      S3 정적 호스팅 (React 대시보드) ★ 데모 배포
+Streamlit (로컬)        →      EC2 t2.micro (실시간 검색 필요 시)
 네이버 API (수동)       →      Lambda (주기적 수집)
+```
+
+---
+
+## Step 0-A. React 대시보드 → S3 정적 호스팅 ★ 권장 데모 방식
+
+> `dashboard_live.html`은 단일 HTML 파일 — EC2/서버 불필요.  
+> 원클릭 배포: `python deploy_aws.py`
+
+### 수동 배포 방법
+
+```bash
+# 1) 실데이터 주입된 HTML 생성
+python run_dashboard.py --no-browser
+
+# 2) S3 버킷 생성 (퍼블릭 정적 호스팅)
+BUCKET=pet-health-ai-demo
+aws s3 mb s3://$BUCKET --region ap-northeast-2
+aws s3 website s3://$BUCKET --index-document dashboard_live.html
+
+# 3) 퍼블릭 읽기 허용 (Block Public Access OFF 먼저 확인)
+aws s3api put-public-access-block \
+  --bucket $BUCKET \
+  --public-access-block-configuration \
+  "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false"
+
+aws s3api put-bucket-policy --bucket $BUCKET --policy "{
+  \"Version\":\"2012-10-17\",
+  \"Statement\":[{\"Effect\":\"Allow\",\"Principal\":\"*\",
+  \"Action\":\"s3:GetObject\",
+  \"Resource\":\"arn:aws:s3:::$BUCKET/*\"}]}"
+
+# 4) HTML 업로드
+aws s3 cp app/dashboard_live.html s3://$BUCKET/dashboard_live.html \
+  --content-type "text/html; charset=utf-8"
+
+# 접속 URL:
+# http://pet-health-ai-demo.s3-website.ap-northeast-2.amazonaws.com/dashboard_live.html
 ```
 
 ---
