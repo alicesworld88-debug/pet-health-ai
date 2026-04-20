@@ -309,6 +309,32 @@ class ChartBuilder:
         ))
         return _to_json(fig)
 
+    # ── 차트 12: 나이팅게일 로즈 (진료과 × 생애주기) ─────────────────────
+
+    def nightingale_rose(self) -> dict:
+        fig = go.Figure()
+        for lc, color in LC_COLOR.items():
+            counts = [
+                int(((self.df["lifeCycle"] == lc) & (self.df["department"] == d)).sum())
+                for d in _DEPTS
+            ]
+            fig.add_trace(go.Barpolar(
+                r=counts, theta=_DEPTS, name=lc,
+                marker_color=color, opacity=_OPACITY,
+                hovertemplate=f"{lc} · %{{theta}}: %{{r:,}}건<extra></extra>",
+            ))
+        fig.update_layout(**_layout(
+            polar=dict(
+                radialaxis=dict(visible=True, gridcolor=GRID_COLOR,
+                                tickfont=dict(size=10), showticklabels=True),
+                angularaxis=dict(tickfont=dict(size=12)),
+            ),
+            barmode="overlay",
+            legend=dict(orientation="h", y=-0.08, x=0.5, xanchor="center"),
+            height=420, margin=dict(t=16, b=60, l=40, r=40),
+        ))
+        return _to_json(fig)
+
     # ── 전체 차트 딕셔너리 반환 ──────────────────────────────────────────
 
     def build_all(self) -> dict:
@@ -334,4 +360,6 @@ class ChartBuilder:
         charts["dept_dual_axis"] = self.dept_dual_axis()
         print("  ⑪ 생애주기 × 진료과 100% 스택 바...")
         charts["lifecycle_dept_stacked"] = self.lifecycle_dept_stacked()
+        print("  ⑫ 나이팅게일 로즈...")
+        charts["nightingale_rose"] = self.nightingale_rose()
         return charts
