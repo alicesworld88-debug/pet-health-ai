@@ -78,6 +78,15 @@ def build_css() -> str:
 :root[data-theme="dark"] .tag.life-adult  {{ color: #5EEAD4; background: {TEAL_600}30; }}
 :root[data-theme="dark"] .tag.life-senior {{ color: #99F6E4; background: #26465355; }}
 
+/* ─ 선버스트 hover 팝아웃 ─ */
+.sunburstlayer path {{
+  transition: filter 0.18s ease;
+  cursor: pointer;
+}}
+.sunburstlayer path:hover {{
+  filter: brightness(1.18) drop-shadow(0 2px 6px rgba(0,0,0,0.28));
+}}
+
 /* ─ 액센트 변수 오버라이드 ─ */
 :root {{
   --accent-h: 174;
