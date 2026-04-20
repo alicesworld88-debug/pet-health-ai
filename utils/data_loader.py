@@ -45,12 +45,12 @@ class DataLoader:
     def doc_snippet(self, idx: int, q_len: int = 160, a_len: int = 220) -> dict:
         """train 코퍼스에서 idx 행의 주요 필드만 반환."""
         if not (0 <= idx < len(self.train)):
-            return {"lifeCycle": "", "department": "", "disease": "", "input": "", "output": ""}
+            return {"lifecycle": "", "dept": "", "disease": "", "q": "", "a": ""}
         r = self.train.iloc[idx]
         return {
-            "lifeCycle":  str(r.get("lifeCycle", "")),
-            "department": str(r.get("department", "")),
-            "disease":    str(r.get("disease", "")),
-            "input":      str(r.get("input", ""))[:q_len],
-            "output":     str(r.get("output", ""))[:a_len],
+            "lifecycle": str(r.get("lifeCycle", "")),
+            "dept":      str(r.get("department", "")),
+            "disease":   str(r.get("disease", "")),
+            "q":         str(r.get("input", ""))[:q_len],
+            "a":         str(r.get("output", ""))[:a_len],
         }
