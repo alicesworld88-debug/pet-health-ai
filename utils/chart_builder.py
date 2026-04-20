@@ -186,25 +186,33 @@ class ChartBuilder:
             b = int(241 + (74  - 241) * t)
             return f"rgb({r},{g},{b})"
 
-        ids, labels, parents, values, colors = [], [], [], [], []
+        ids, labels, parents, values, colors, cnts = [], [], [], [], [], []
         for lc in _LIVES:
             ids.append(lc); labels.append(lc)
             parents.append(""); values.append(0)
-            colors.append(LC_COLOR.get(lc, NEUTRAL))
+            colors.append(LC_COLOR.get(lc, NEUTRAL)); cnts.append(None)
         for _, row in word_df.iterrows():
             uid = f"{row['lifeCycle']}|{row['bigram']}"
             ids.append(uid); labels.append(row["bigram"])
             parents.append(row["lifeCycle"]); values.append(row["count"])
-            colors.append(_interp(row["count"]))
+            colors.append(_interp(row["count"])); cnts.append(row["count"])
 
         fig = go.Figure(go.Treemap(
             ids=ids, labels=labels, parents=parents, values=values,
-            marker=dict(colors=colors, line=dict(width=1.5, color=HOVER_BG)),
+            marker=dict(
+                colors=colors,
+                line=dict(width=1.5, color=HOVER_BG),
+                colorscale=TREEMAP_SCALE,
+                cmin=cnt_min, cmax=cnt_max,
+                colorbar=dict(title="빈도", thickness=12, len=0.7,
+                              tickfont=dict(size=10), x=1.01),
+                showscale=True,
+            ),
             hovertemplate="%{label}: %{value:,}회<extra></extra>",
             textinfo="label+value", textfont=dict(size=13),
             opacity=_OPACITY,
         ))
-        fig.update_layout(**_layout(height=480, margin=dict(t=16, b=16, l=16, r=16)))
+        fig.update_layout(**_layout(height=480, margin=dict(t=16, b=16, l=16, r=80)))
         return _to_json(fig)
 
     # ── 차트 8: Train / Val 생애주기 분할 ────────────────────────────────
