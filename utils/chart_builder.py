@@ -50,7 +50,7 @@ class ChartBuilder:
                 colors.append(COLOR_PRIMARY)
             else:
                 opacity = max(0.35, 1.0 - i * 0.05)
-                colors.append(f"rgba(42,157,143,{opacity:.2f})")
+                colors.append(f"rgba(94,170,168,{opacity:.2f})")
         fig = go.Figure(go.Bar(
             x=dis.values.tolist(), y=dis.index.tolist(), orientation="h",
             marker_color=colors, opacity=_OPACITY,
