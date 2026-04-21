@@ -9,10 +9,11 @@ AWS S3 정적 호스팅 원클릭 배포 스크립트
 import sys, argparse, subprocess
 from pathlib import Path
 
-ROOT   = Path(__file__).parent
-HTML   = ROOT / "app" / "dashboard_live.html"
-BUCKET = "pet-health-ai-demo"
-REGION = "ap-northeast-2"
+ROOT      = Path(__file__).parent
+HTML      = ROOT / "app" / "dashboard_live.html"
+BUCKET    = "alices-project-storage"
+S3_KEY    = "pet-health-ai/dashboard/index.html"
+REGION    = "ap-northeast-2"
 
 def run(cmd: list[str]) -> str:
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -113,7 +114,7 @@ def main():
     try:
         s3.put_bucket_website(
             Bucket=bucket,
-            WebsiteConfiguration={"IndexDocument": {"Suffix": "dashboard_live.html"}},
+            WebsiteConfiguration={"IndexDocument": {"Suffix": "index.html"}},
         )
         print("   ✓ 정적 웹사이트 호스팅 활성화")
     except Exception as e:
@@ -121,13 +122,13 @@ def main():
 
     # ⑥ HTML 파일 업로드
     size_kb = HTML.stat().st_size // 1024
-    print(f"📤 업로드: dashboard_live.html ({size_kb}KB)")
+    print(f"📤 업로드: {S3_KEY} ({size_kb}KB)")
     s3.upload_file(
-        str(HTML), bucket, "dashboard_live.html",
+        str(HTML), bucket, S3_KEY,
         ExtraArgs={"ContentType": "text/html; charset=utf-8"},
     )
 
-    url = f"http://{bucket}.s3-website.{args.region}.amazonaws.com/dashboard_live.html"
+    url = f"https://{bucket}.s3.{args.region}.amazonaws.com/{S3_KEY}"
     print(f"\n✅ 배포 완료!")
     print(f"🌐 접속 URL: {url}")
 
