@@ -19,7 +19,7 @@ _OPACITY = 0.82
 
 def _layout(**kwargs) -> dict:
     base = dict(
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="#ffffff", plot_bgcolor="#ffffff",
         font=dict(family="'Pretendard Variable','Inter',sans-serif", size=12, color=TEXT_COLOR),
         hoverlabel=dict(bgcolor=HOVER_BG, font_size=12),
         margin=dict(t=16, b=40, l=60, r=20),
