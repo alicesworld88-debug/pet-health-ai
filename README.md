@@ -49,6 +49,7 @@ git clone https://github.com/alicesworld88-debug/pet-health-ai.git
 cd pet-health-ai
 pip install -r requirements.txt
 python run_dashboard.py
+# → 브라우저가 자동으로 열리며 인터랙티브 대시보드 확인
 ```
 
 > 데이터 경로: `utils/config.py`의 `_LOCAL_ROOT`를 AI Hub 데이터 압축 해제 경로로 수정
