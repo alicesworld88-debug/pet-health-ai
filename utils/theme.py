@@ -7,7 +7,7 @@ chart_builder.py, run_dashboard.py 양쪽에서 import.
 TEAL_50  = "#F0FDFA"
 TEAL_100 = "#CCFBF1"
 TEAL_300 = "#86EFCA"
-TEAL_500 = "#2A9D8F"
+TEAL_500 = "#5EAAA8"
 TEAL_600 = "#0F766E"
 TEAL_900 = "#134E4A"
 
@@ -18,16 +18,16 @@ DANGER  = "#EF4444"
 NEUTRAL = "#94a3b8"
 
 # ── UI 공통 ──────────────────────────────────────────────────────────
-TEXT_COLOR  = "#111827"
+TEXT_COLOR  = "#2D3142"
 HOVER_BG    = "#FFFFFF"
-GRID_COLOR  = "#E5E7EB"
+GRID_COLOR  = "#EDE9E3"
 
 # ── 5-범주 팔레트 (진료과) ────────────────────────────────────────────
 PALETTE = [
-    "#2A9D8F",  # 내과  — teal
-    "#E76F51",  # 외과  — terracotta
+    "#5EAAA8",  # 내과  — light teal
+    "#EC8B74",  # 외과  — light coral
     "#F4A261",  # 피부과 — apricot
-    "#264653",  # 안과  — deep teal
+    "#8B8FA7",  # 안과  — lavender grey
     "#F59E0B",  # 치과  — amber
 ]
 
@@ -35,14 +35,14 @@ DEPT_COLORS = dict(zip(["내과", "외과", "피부과", "안과", "치과"], PA
 
 # ── 생애주기 ─────────────────────────────────────────────────────────
 LC_COLOR = {
-    "자견":   "#F4A261",  # apricot
-    "성견":   "#1D7874",  # deep blue-green
-    "노령견": "#4A5568",  # charcoal grey
+    "자견":   "#F4B670",  # 밝은 살구
+    "성견":   "#5EAAA8",  # 밝은 틸
+    "노령견": "#8B8FA7",  # 라벤더 그레이
 }
 
 # ── 모델 비교 ────────────────────────────────────────────────────────
-COLOR_BERT       = "#2A9D8F"  # teal  — BERT
-COLOR_TFIDF      = "#E76F51"  # terracotta — TF-IDF
+COLOR_BERT       = "#5EAAA8"  # light teal — BERT
+COLOR_TFIDF      = "#EC8B74"  # light coral — TF-IDF
 COLOR_VALIDATION = TEAL_300   # 연청록 — val split
 
 # ── 기타 ─────────────────────────────────────────────────────────────
@@ -57,6 +57,10 @@ TREEMAP_SCALE = [TEAL_100, TEAL_300, TEAL_500, TEAL_600, TEAL_900]
 def build_css() -> str:
     lc = LC_COLOR
     return f"""<style id="theme-override">
+/* ─ 전역 배경 ─ */
+:root {{ --bg-canvas-override: #FAFAF9; }}
+body, .shell {{ background: #FAFAF9 !important; }}
+
 /* ─ 모델 바 ─ */
 .bar-fill.bert  {{ background: {COLOR_BERT}; }}
 .bar-fill.tfidf {{ background: {COLOR_TFIDF}; }}
@@ -71,12 +75,12 @@ def build_css() -> str:
 /* ─ 생애주기 태그 ─ */
 .tag.life-puppy  {{ color: #9A3412; background: #FEF3C7; border-color: {lc['자견']}60; }}
 .tag.life-adult  {{ color: {TEAL_600}; background: {lc['성견']}20; border-color: {lc['성견']}50; }}
-.tag.life-senior {{ color: {lc['노령견']}; background: {lc['노령견']}20; border-color: {lc['노령견']}60; }}
+.tag.life-senior {{ color: #5B5E72; background: {lc['노령견']}20; border-color: {lc['노령견']}60; }}
 
 /* ─ 다크모드 생애주기 태그 ─ */
 :root[data-theme="dark"] .tag.life-puppy  {{ color: #FCD34D; background: #92400E30; }}
 :root[data-theme="dark"] .tag.life-adult  {{ color: #5EEAD4; background: {TEAL_600}30; }}
-:root[data-theme="dark"] .tag.life-senior {{ color: #99F6E4; background: #26465355; }}
+:root[data-theme="dark"] .tag.life-senior {{ color: #C0C3D8; background: #8B8FA730; }}
 
 /* ─ 선버스트 hover 팝아웃 ─ */
 .sunburstlayer path {{
