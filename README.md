@@ -58,49 +58,28 @@ python run_dashboard.py
 
 ## 🏗 시스템 아키텍처
 
-```
-[데이터 수집]      [전처리]          [모델링]
-AI Hub JSON  →  KoNLPy Okt    →  TF-IDF Vectorizer
-21,604건        형태소 분석         ko-sroberta 임베딩
-                구어체 정규화        (.npy 캐싱, 56MB)
-                     │
-                     ▼
-             [평가 — Ground Truth 50 queries]
-             Hit@1/3/5 · MAP@5 · 생애주기별 분해
-                     │
-                     ▼
-             [서비스 — S3 정적 배포]
-             인터랙티브 대시보드 (React + Plotly)
-             증상 검색 · EDA · 모델 비교 · 실패 분석
+```mermaid
+flowchart LR
+    A["📥 데이터 수집\nAI Hub JSON\n21,604건"] --> B["⚙️ 전처리\nKoNLPy Okt\n구어체 정규화"]
+    B --> C["🤖 모델링\nTF-IDF Vectorizer\nko-sroberta 임베딩"]
+    C --> D["📊 평가\nGround Truth 50 queries\nHit@1/3/5 · MAP@5"]
+    D --> E["🌐 서비스\nS3 정적 배포\nReact + Plotly 대시보드"]
 ```
 
 ## 📦 데이터 아키텍처
 
-```
-AI Hub JSON (수집 21,606건 → 최종 21,604건)
-        │
-        ▼ 01. 수집 — 병렬 로드 (ThreadPoolExecutor)
-corpus_raw.csv (37MB)
-        │
-        ▼ 02. 검증 — 결측·중복·이상치 제거
-corpus_validated.csv
-        │
-        ▼ 03. 전처리 — KoNLPy Okt + 구어체 정규화
-corpus_preprocessed.csv (117MB)
-        │
-   ┌────┴────┐
-train       val
-19,205건   2,399건
-   │            │
-   ▼            ▼ 05. Ground Truth 구축
-TF-IDF 학습    queries 50개
-SBERT 임베딩   (자견17·성견17·노령견16)
-(.npy 56MB)        │
-   │               ▼ 06. 매칭 실험
-   └──────→ matching_results.csv
-                   │
-                   ▼ 07. 성능 평가
-           evaluation_summary.csv
+```mermaid
+flowchart TD
+    A["🗂 AI Hub JSON\n수집 21,606건"] --> B["corpus_raw.csv 37MB\n01. 병렬 로드"]
+    B --> C["corpus_validated.csv\n02. 결측·중복·이상치 제거"]
+    C --> D["corpus_preprocessed.csv 117MB\n03. KoNLPy Okt + 구어체 정규화"]
+    D --> E["train\n19,205건"]
+    D --> F["val\n2,399건"]
+    E --> G["TF-IDF 학습\nSBERT 임베딩 .npy 56MB"]
+    F --> H["Ground Truth 50 queries\n05. 자견17·성견17·노령견16"]
+    G --> I["matching_results.csv\n06. 매칭 실험"]
+    H --> I
+    I --> J["evaluation_summary.csv\n07. Hit@1/3/5 · MAP@5"]
 ```
 
 ---
