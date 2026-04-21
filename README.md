@@ -2,9 +2,19 @@
 
 > AI Hub 반려견 Q&A 말뭉치 기반 생애주기 건강 분석 및 의미 매칭 시스템
 
-[![Status](https://img.shields.io/badge/status-complete-brightgreen)]()
-[![Course](https://img.shields.io/badge/course-Data_Mining-blue)]()
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue)]()
+[![Status](https://img.shields.io/badge/status-중간보고서-blue)]()
+[![Course](https://img.shields.io/badge/course-데이터마이닝-green)]()
+[![Python](https://img.shields.io/badge/python-3.10-yellow)]()
+[![AWS](https://img.shields.io/badge/AWS-S3-orange)]()
+[![Model](https://img.shields.io/badge/model-SBERT-red)]()
+
+---
+
+## 🌐 Live Dashboard
+
+**[https://alices-project-storage.s3.ap-northeast-2.amazonaws.com/pet-health-ai/dashboard/index.html](https://alices-project-storage.s3.ap-northeast-2.amazonaws.com/pet-health-ai/dashboard/index.html)**
+
+5개 페이지로 구성: 증상 검색 (데모) · 데이터 현황 · EDA · 모델 평가 · 매칭 결과 뷰어
 
 ---
 
@@ -12,8 +22,6 @@
 
 반려견 보호자가 자연어로 증상을 입력하면, 수의사 Q&A 말뭉치에서 의미적으로 유사한 답변을 추천하는 시스템입니다.  
 **TF-IDF**와 **Sentence-BERT** 두 방법의 성능을 정량 지표(Hit@1/Hit@3/Hit@5/MAP@5)로 비교하여 의미 기반 검색의 실질적 우위를 검증합니다.
-
-**🌐 라이브 대시보드**: [S3 배포 링크](https://alices-project-storage.s3.ap-northeast-2.amazonaws.com/pet-health-ai/dashboard/index.html)
 
 ---
 
@@ -43,7 +51,7 @@
 
 - **출처**: [AI Hub — 반려견 성장 및 질병 관련 말뭉치](https://aihub.or.kr)
 - **구성**: 내과 / 안과 / 외과 / 치과 / 피부과 5개 진료과 Q&A
-- **규모**: Training 19,418개 + Validation 2,427개 = 총 21,845개 JSON
+- **규모**: Training 19,205개 + Validation 2,399개 = 총 21,604개 (전처리 후 최종)
 - **라벨**: `lifeCycle` (자견/성견/노령견), `disease`, `department`
 
 > 원본 데이터는 AI Hub 이용 약관에 따라 레포에 포함되지 않습니다.
@@ -150,6 +158,12 @@ S3 (alices-project-storage)
 | MAP@5 | 9.74% | **12.87%** | +3.13 %p |
 
 > 평가 기준: 검증셋 50 queries (자견 17 · 성견 17 · 노령견 16), 소프트 매치
+
+### 주요 발견
+- **BERT 우위**: Hit@1·Hit@3·MAP@5에서 BERT가 TF-IDF 상회
+- **Hit@5 수렴**: k가 커지면 두 방법이 동률로 수렴 — BERT 실질 우위는 Top-1~3 구간
+- **생애주기별 반전**: 자견(BERT +17.6%p) vs 성견(TF-IDF +5.9%p)
+- **공통 실패 패턴**: 의료 절차 질문(50%) · 이물질 급성 상황(30%) · 희귀 질병(20%)
 
 ---
 
