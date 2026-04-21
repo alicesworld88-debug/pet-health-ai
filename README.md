@@ -11,7 +11,9 @@
 ## 프로젝트 개요
 
 반려견 보호자가 자연어로 증상을 입력하면, 수의사 Q&A 말뭉치에서 의미적으로 유사한 답변을 추천하는 시스템입니다.  
-**TF-IDF**와 **Sentence-BERT** 두 방법의 성능을 정량 지표(Top-1/Top-3/MRR)로 비교하여 의미 기반 검색의 실질적 우위를 검증합니다.
+**TF-IDF**와 **Sentence-BERT** 두 방법의 성능을 정량 지표(Hit@1/Hit@3/Hit@5/MAP@5)로 비교하여 의미 기반 검색의 실질적 우위를 검증합니다.
+
+**🌐 라이브 대시보드**: [S3 배포 링크](https://alices-project-storage.s3.ap-northeast-2.amazonaws.com/pet-health-ai/dashboard/index.html)
 
 ---
 
@@ -33,7 +35,7 @@
 | 04 | `04_eda.ipynb` | 생애주기별 질병 분포, 워드클라우드, Sunburst, Long-tail | `eda_figures/` |
 | 05 | `05_ground_truth.ipynb` | 평가용 쿼리 50개 반자동 구축 | `ground_truth.csv` |
 | 06 | `06_matching.ipynb` | TF-IDF / Sentence-BERT 매칭 실행 | `matching_results.csv` |
-| 07 | `07_evaluation.ipynb` | Top-1/Top-3/MRR 성능 비교 시각화 | `evaluation_summary.csv` |
+| 07 | `07_evaluation.ipynb` | Hit@1/3/5, MAP@5 성능 비교 시각화 | `evaluation_summary.csv` |
 
 ---
 
@@ -61,16 +63,23 @@ pet-health-ai/
 │   ├── 06_matching.ipynb
 │   └── 07_evaluation.ipynb
 ├── app/
-│   └── streamlit_app.py           # 증상 매칭 웹 앱
+│   └── dashboard.html             # 인터랙티브 대시보드 (S3 배포용)
 ├── utils/
 │   ├── config.py                  # 경로·환경 설정 (local ↔ S3 전환)
-│   └── matcher.py                 # TF-IDF / BERT 공통 매칭 함수
+│   ├── matcher.py                 # TF-IDF / BERT 공통 매칭 함수
+│   ├── app_builder.py             # APP_DATA 빌더
+│   ├── chart_builder.py           # Plotly 차트 생성
+│   └── theme.py                   # 디자인 시스템 (색상 팔레트)
 ├── data/
 │   ├── processed/                 # 전처리 결과 CSV, 임베딩 .npy
 │   └── splits/                    # ground_truth.csv
 ├── docs/
+│   ├── ontology.md                # 도메인 개념 모델 정의
+│   ├── evaluation_tables.md       # 보고서용 평가 수치
 │   ├── aws_migration.md           # AWS 마이그레이션 가이드
 │   └── conventions.md             # 커밋·코드 컨벤션
+├── run_dashboard.py               # 대시보드 로컬 실행
+├── deploy_aws.py                  # S3 배포 스크립트
 ├── requirements.txt
 └── README.md
 ```
@@ -81,7 +90,7 @@ pet-health-ai/
 
 ```bash
 # 1. 레포 클론
-git clone <repo-url>
+git clone https://github.com/alicesworld88-debug/pet-health-ai.git
 cd pet-health-ai
 
 # 2. 가상환경 생성
@@ -94,8 +103,8 @@ pip install -r requirements.txt
 # 4. 노트북 순서대로 실행 (01 → 07)
 jupyter notebook
 
-# 5. Streamlit 앱 실행
-streamlit run app/streamlit_app.py
+# 5. 대시보드 로컬 실행
+python run_dashboard.py
 ```
 
 > **데이터 경로**: `utils/config.py`의 `_LOCAL_ROOT`를 AI Hub 데이터 압축 해제 경로로 수정하세요.
@@ -107,36 +116,43 @@ streamlit run app/streamlit_app.py
 | 구분 | 내용 |
 |------|------|
 | 형태소 분석 | KoNLPy Okt — 명사/동사/형용사 추출, 불용어 제거 |
-| 프롬프트 최적화 | 구어체 → 표준 의학 용어 변환 사전 (`COLLOQUIAL_MAP`) |
+| 구어체 정규화 | 구어체 → 표준 의학 용어 변환 사전 (`COLLOQUIAL_MAP`) |
 | TF-IDF 매칭 | `TfidfVectorizer` + 코사인 유사도 |
 | BERT 매칭 | `jhgan/ko-sroberta-multitask`, 임베딩 사전 계산 후 `.npy` 캐싱 |
-| 평가 지표 | Top-1 정확도, Top-3 정확도, MRR (50개 Ground Truth 기준) |
+| 평가 지표 | Hit@1/3/5, MAP@5 (50개 Ground Truth, 소프트 매치 기준) |
+| 시각화 | Plotly + React (Babel standalone) 인터랙티브 대시보드 |
 
 ---
 
-## AWS 아키텍처 (Pattern C)
+## AWS 아키텍처
 
 ```
-Lambda (크롤링 트리거)
-    └── S3 (원본 JSON + 전처리 CSV + 임베딩 .npy)
-            ├── SageMaker (BERT 임베딩 생성 — 고메모리 작업)
-            └── EC2 t2.micro (Streamlit 서비스 — 경량 추론)
+S3 (alices-project-storage)
+└── pet-health-ai/
+    ├── dashboard/index.html   ← 정적 대시보드 (현재 배포)
+    └── data/
+        ├── processed/         ← 전처리 CSV
+        ├── embeddings/        ← BERT 임베딩 .npy
+        └── splits/            ← Ground Truth
 ```
 
-> 마이그레이션 가이드: [docs/aws_migration.md](docs/aws_migration.md)
+> 최종 발표 시 동적 검색(사용자 실시간 입력) 구현 예정: Lambda + S3 + BERT 추론
 
 ---
 
 ## 성능 요약
 
-| 지표 | TF-IDF | Sentence-BERT |
-|------|--------|--------------|
-| Top-1 정확도 | (실행 후 기입) | (실행 후 기입) |
-| Top-3 정확도 | (실행 후 기입) | (실행 후 기입) |
-| MRR | (실행 후 기입) | (실행 후 기입) |
+| 지표 | TF-IDF | Sentence-BERT | 향상 |
+|------|--------|--------------|------|
+| Hit@1 | 18.0% | **24.0%** | +6.0 %p |
+| Hit@3 | 48.0% | **52.0%** | +4.0 %p |
+| Hit@5 | 62.0% | 62.0% | ±0 %p |
+| MAP@5 | 9.74% | **12.87%** | +3.13 %p |
+
+> 평가 기준: 검증셋 50 queries (자견 17 · 성견 17 · 노령견 16), 소프트 매치
 
 ---
 
 ## 작성자
 
-데이터마이닝 과제 (2025)
+성균관대학교 데이터마이닝 과제 (2025)
