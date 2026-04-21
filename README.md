@@ -7,7 +7,8 @@
 [![Course](https://img.shields.io/badge/과목-데이터마이닝-green)]()
 
 > 보호자가 "밥을 안먹어요"라고 입력하면, 21,604건 수의사 Q&A에서  
-> 의미적으로 가장 유사한 답변을 즉시 추천하는 시스템
+> 의미적으로 가장 유사한 답변을 즉시 추천하는 시스템  
+> (수집 21,606건 → 전처리 후 최종 21,604건, 중복 2건 제거)
 
 ---
 
@@ -76,7 +77,7 @@ AI Hub JSON  →  KoNLPy Okt    →  TF-IDF Vectorizer
 ## 📦 데이터 아키텍처
 
 ```
-AI Hub JSON (21,604건)
+AI Hub JSON (수집 21,606건 → 최종 21,604건)
         │
         ▼ 01. 수집 — 병렬 로드 (ThreadPoolExecutor)
 corpus_raw.csv (37MB)
