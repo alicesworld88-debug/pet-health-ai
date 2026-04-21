@@ -6,9 +6,8 @@
 [![Model](https://img.shields.io/badge/model-ko--sroberta-red)]()
 [![Course](https://img.shields.io/badge/과목-데이터마이닝-green)]()
 
-> 보호자가 "밥을 안먹어요"라고 입력하면, 21,604건 수의사 Q&A에서  
-> 의미적으로 가장 유사한 답변을 즉시 추천하는 시스템  
-> (수집 21,606건 → 전처리 후 최종 21,604건, 중복 2건 제거)
+> 보호자가 "밥을 안 먹어요"라고 입력하면,  
+> 21,604건 수의사 Q&A에서 의미적으로 가장 유사한 답변을 즉시 추천하는 시스템
 
 ---
 
@@ -63,7 +62,7 @@ flowchart LR
     A["📥 데이터 수집\nAI Hub JSON\n21,604건"] --> B["⚙️ 전처리\nKoNLPy Okt\n구어체 정규화"]
     B --> C["🤖 모델링\nTF-IDF Vectorizer\nko-sroberta 임베딩"]
     C --> D["📊 평가\nGround Truth 50 queries\nHit@1/3/5 · MAP@5"]
-    D --> E["🌐 서비스\nS3 정적 배포\nReact + Plotly 대시보드"]
+    D --> E["🌐 서비스\nS3 웹 호스팅\nReact + Plotly 대시보드"]
 ```
 
 ## 📦 데이터 아키텍처
@@ -143,7 +142,7 @@ pet-health-ai/
 ```
 S3 (alices-project-storage)
 └── pet-health-ai/
-    ├── dashboard/index.html   ← 정적 대시보드 (현재)
+    ├── dashboard/index.html   ← 인터랙티브 대시보드 (현재)
     └── data/
         ├── processed/
         ├── embeddings/        ← BERT 임베딩 .npy
@@ -156,4 +155,5 @@ S3 (alices-project-storage)
 
 ## 작성자
 
-성균관대학교 대학원 빅데이터학과 정은영 (2025720370)
+성균관대학교 대학원 빅데이터학과 정은영 (학번 2025720370)  
+데이터마이닝 과제 (2026학년도)
