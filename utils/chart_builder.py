@@ -1,265 +1,157 @@
 """Plotly 차트 생성 모듈 — theme.py에서 색상 import."""
 import json
-import collections
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px
 
 from utils.theme import (
-    PALETTE, LC_COLOR, COLOR_OTHER, COLOR_PRIMARY,
-    HEATMAP_SCALE, TREEMAP_SCALE, SUCCESS, WARNING, DANGER,
-    COLOR_BERT, COLOR_TFIDF, COLOR_VALIDATION, NEUTRAL,
-    TEXT_COLOR, HOVER_BG, GRID_COLOR,
+    LC_COLOR, COLOR_PRIMARY,
+    HEATMAP_SCALE_DISCRETE, WARNING,
+    TEXT_COLOR, AXIS_COLOR, HOVER_BG, GRID_COLOR,
 )
 
 _DEPTS = ["내과", "외과", "피부과", "안과", "치과"]
 _LIVES = ["자견", "성견", "노령견"]
-_OPACITY = 0.82
+_OPACITY = 0.85
 
+
+# ── 공통 헬퍼 ─────────────────────────────────────────────────────────────
 
 def _layout(**kwargs) -> dict:
     base = dict(
         paper_bgcolor="#ffffff", plot_bgcolor="#ffffff",
-        font=dict(family="'Pretendard Variable','Inter',sans-serif", size=12, color=TEXT_COLOR),
-        hoverlabel=dict(bgcolor=HOVER_BG, font_size=12),
+        font=dict(family="'Pretendard Variable','Inter',sans-serif", size=13, color=TEXT_COLOR),
+        hoverlabel=dict(bgcolor=HOVER_BG, font_size=13),
         margin=dict(t=16, b=40, l=60, r=20),
     )
     base.update(kwargs)
     return base
 
 
+def _axis(title="", **kwargs) -> dict:
+    return dict(
+        title=title,
+        tickfont=dict(size=12, color=AXIS_COLOR),
+        title_font=dict(size=12, color=AXIS_COLOR),
+        gridcolor=GRID_COLOR,
+        **kwargs,
+    )
+
+
 def _to_json(fig) -> dict:
     return json.loads(fig.to_json())
 
 
+def _heatmap_annotations(z, x_labels, y_labels, threshold=0.65, size=11) -> list:
+    """셀 밝기에 따라 텍스트 색 자동 전환 (진한 배경→흰색, 연한 배경→검정)."""
+    flat = [v for row in z for v in row]
+    max_val = max(flat) if flat else 1
+    anns = []
+    for i, row in enumerate(z):
+        for j, val in enumerate(row):
+            color = "#FFFFFF" if (val / max_val) > threshold else "#1F2937"
+            anns.append(dict(
+                x=x_labels[j], y=y_labels[i],
+                text=f"{int(val):,}",
+                showarrow=False,
+                font=dict(size=size, color=color, weight=700,
+                          family="'Pretendard Variable','Inter',sans-serif"),
+            ))
+    return anns
+
+
+def _crosstab_heatmap(df, row_col, col_col, row_order, col_order,
+                      x_title, height, margin, ann_size,
+                      exclude_row_val=None, top_n=None) -> dict:
+    """범용 crosstab 히트맵 — row/col 컬럼과 순서만 넘기면 재사용 가능."""
+    if exclude_row_val:
+        df = df[df[row_col] != exclude_row_val]
+    if top_n:
+        row_order = df[row_col].value_counts().head(top_n).index.tolist()
+
+    ct = (pd.crosstab(df[row_col], df[col_col])
+            .reindex(row_order).reindex(columns=col_order).fillna(0))
+    z = ct.values.tolist()
+
+    fig = go.Figure(go.Heatmap(
+        z=z, x=col_order, y=row_order,
+        colorscale=HEATMAP_SCALE_DISCRETE, opacity=_OPACITY,
+        xgap=3, ygap=3,
+        hovertemplate="%{y} × %{x}: %{z:,}건<extra></extra>",
+        showscale=True,
+    ))
+    fig.update_layout(**_layout(
+        height=height, margin=margin,
+        xaxis=dict(showgrid=False, zeroline=False, **_axis(x_title)),
+        yaxis=dict(autorange="reversed", showgrid=False, zeroline=False, **_axis()),
+        annotations=_heatmap_annotations(z, col_order, row_order, size=ann_size),
+    ))
+    return _to_json(fig)
+
+
+def _lifecycle_boxplot(df, col, y_title, hover_label) -> go.Figure:
+    """생애주기별 박스플롯 공통 생성."""
+    fig = go.Figure()
+    for lc, color in LC_COLOR.items():
+        vals = df[df["lifeCycle"] == lc][col].str.len().tolist()
+        fig.add_trace(go.Box(
+            y=vals, name=lc, marker_color=color, opacity=_OPACITY,
+            boxpoints="outliers", jitter=0.3, pointpos=-1.8,
+            hovertemplate=f"{lc} — {hover_label}: %{{y}}자<extra></extra>",
+        ))
+    fig.update_layout(**_layout(
+        height=300,
+        yaxis=_axis(y_title),
+        legend=dict(orientation="h", y=1.08, x=0.5, xanchor="center",
+                    font=dict(size=12, color=AXIS_COLOR)),
+    ))
+    return fig
+
+
+# ── ChartBuilder ─────────────────────────────────────────────────────────────
+
 class ChartBuilder:
-    """재사용 가능한 Plotly 차트 팩토리."""
+    """Plotly 차트 팩토리 — EDA 6종."""
 
     def __init__(self, corpus: pd.DataFrame):
         self.df = corpus
 
-    # ── 차트 1: 질병 롱테일 수평 막대 ────────────────────────────────────
+    # ── 1: 생애주기 × 질병 Top 히트맵 ────────────────────────────────────
+    def lifecycle_disease_heatmap(self, top_n: int = 12) -> dict:
+        return _crosstab_heatmap(
+            self.df, row_col="disease", col_col="lifeCycle",
+            row_order=None, col_order=_LIVES, x_title="생애주기",
+            height=420, margin=dict(t=16, b=40, l=120, r=60), ann_size=12,
+            exclude_row_val="기타", top_n=top_n,
+        )
 
-    def disease_bar(self, top_n: int = 15) -> dict:
-        dis = self.df["disease"].value_counts().head(top_n)
-        colors = []
-        for i, n in enumerate(dis.index):
-            if n == "기타":
-                colors.append(COLOR_OTHER)
-            elif i == 0:
-                colors.append(COLOR_PRIMARY)
-            else:
-                opacity = max(0.35, 1.0 - i * 0.05)
-                colors.append(f"rgba(94,170,168,{opacity:.2f})")
-        fig = go.Figure(go.Bar(
-            x=dis.values.tolist(), y=dis.index.tolist(), orientation="h",
-            marker_color=colors, opacity=_OPACITY,
-            text=[f"{v:,}" for v in dis.values], textposition="outside",
-            hovertemplate="%{y}: %{x:,}건<extra></extra>",
-        ))
-        fig.update_layout(**_layout(
-            yaxis=dict(autorange="reversed", tickfont=dict(size=11)),
-            xaxis=dict(title="건수", gridcolor=GRID_COLOR), height=360,
-        ))
-        return _to_json(fig)
-
-    # ── 차트 2: 생애주기 도넛 ────────────────────────────────────────────
-
-    def lifecycle_pie(self) -> dict:
-        lc = self.df["lifeCycle"].value_counts().reindex(_LIVES).dropna()
-        fig = go.Figure(go.Pie(
-            labels=lc.index.tolist(), values=lc.values.tolist(), hole=0.52,
-            marker_colors=[LC_COLOR.get(l, NEUTRAL) for l in lc.index],
-            textinfo="label+percent", opacity=_OPACITY,
-            hovertemplate="%{label}: %{value:,}건 (%{percent})<extra></extra>",
-        ))
-        fig.update_layout(**_layout(
-            height=340, margin=dict(t=16, b=50, l=20, r=20),
-            legend=dict(orientation="h", y=-0.12, x=0.5, xanchor="center"),
-            annotations=[dict(text=f"{len(self.df):,}", x=0.5, y=0.5,
-                              showarrow=False, font=dict(size=18), xanchor="center")],
-        ))
-        return _to_json(fig)
-
-    # ── 차트 3: 진료과 × 생애주기 히트맵 ────────────────────────────────
-
-    def dept_heatmap(self) -> dict:
-        ct = pd.crosstab(self.df["lifeCycle"], self.df["department"])
-        z  = [[int(ct.loc[lc, d]) if lc in ct.index and d in ct.columns else 0
-               for d in _DEPTS] for lc in _LIVES]
-        fig = go.Figure(go.Heatmap(
-            z=z, x=_DEPTS, y=_LIVES,
-            colorscale=HEATMAP_SCALE, opacity=_OPACITY,
-            text=[[f"{v:,}" for v in row] for row in z], texttemplate="%{text}",
-            hovertemplate="%{y} × %{x}: %{z:,}건<extra></extra>", showscale=True,
-        ))
-        fig.update_layout(**_layout(
-            height=280, margin=dict(t=16, b=50, l=70, r=60),
-            xaxis=dict(title="진료과"), yaxis=dict(title="생애주기"),
-        ))
-        return _to_json(fig)
-
-    # ── 차트 4: 텍스트 길이 박스플롯 ─────────────────────────────────────
-
+    # ── 2: 질문 길이 박스플롯 ─────────────────────────────────────────────
     def text_boxplot(self) -> dict:
+        return _to_json(_lifecycle_boxplot(self.df, "input", "질문 길이 (chars)", "질문 길이"))
+
+    # ── 3: 질문 길이 히스토그램 ──────────────────────────────────────────
+    def question_len_histogram(self) -> dict:
         fig = go.Figure()
         for lc, color in LC_COLOR.items():
             vals = self.df[self.df["lifeCycle"] == lc]["input"].str.len().tolist()
-            fig.add_trace(go.Box(
-                y=vals, name=lc, marker_color=color, opacity=_OPACITY,
-                boxpoints="outliers", jitter=0.3, pointpos=-1.8,
-                hovertemplate=f"{lc} — 길이: %{{y}}자<extra></extra>",
+            fig.add_trace(go.Histogram(
+                x=vals, name=lc, marker_color=color, opacity=0.65,
+                nbinsx=60,
+                hovertemplate=f"{lc}: %{{y}}건<extra></extra>",
             ))
         fig.update_layout(**_layout(
-            height=280,
-            yaxis=dict(title="문자 수 (chars)"),
-            legend=dict(orientation="h", y=1.08, x=0.5, xanchor="center"),
+            height=280, barmode="overlay",
+            xaxis=_axis("질문 길이 (chars)"),
+            yaxis=_axis("빈도"),
+            legend=dict(orientation="h", y=1.08, x=0.5, xanchor="center",
+                        font=dict(size=12, color=AXIS_COLOR)),
         ))
         return _to_json(fig)
 
-    # ── 차트 5: 계층 선버스트 ────────────────────────────────────────────
-
-    def sunburst(self) -> dict:
-        sb = (self.df.groupby(["lifeCycle", "department", "disease"])
-              .size().reset_index(name="cnt"))
-        sb = (sb.sort_values("cnt", ascending=False)
-              .groupby(["lifeCycle", "department"]).head(4)
-              .reset_index(drop=True))
-        fig = px.sunburst(sb, path=["lifeCycle", "department", "disease"],
-                          values="cnt", color_discrete_sequence=PALETTE)
-        fig.update_traces(hovertemplate="%{label}: %{value:,}건<extra></extra>",
-                          textfont_size=12, opacity=_OPACITY)
-        fig.update_layout(**_layout(height=440, margin=dict(t=16, b=16, l=16, r=16)))
-        return _to_json(fig)
-
-    # ── 차트 6: 진료과별 Top 5 질병 ─────────────────────────────────────
-
-    def dept_top5(self) -> dict:
-        dd = (self.df[self.df["disease"] != "기타"]
-              .groupby(["department", "disease"]).size().reset_index(name="cnt"))
-        dd = (dd.sort_values("cnt", ascending=False)
-              .groupby("department").head(5).reset_index(drop=True))
-        fig = px.bar(dd, x="cnt", y="disease", color="department",
-                     orientation="h", barmode="group",
-                     category_orders={"department": _DEPTS},
-                     color_discrete_sequence=PALETTE,
-                     labels={"cnt": "건수", "disease": "질병", "department": "진료과"})
-        fig.update_traces(opacity=_OPACITY)
-        fig.update_layout(**_layout(
-            height=400,
-            margin=dict(t=16, b=60, l=60, r=20),
-            yaxis=dict(autorange="reversed", tickfont=dict(size=11)),
-            xaxis=dict(title=""),
-            legend=dict(orientation="h", y=-0.14, x=0.5, xanchor="center"),
-        ))
-        return _to_json(fig)
-
-    # ── 차트 7: 생애주기별 빈출 2-gram 트리맵 ────────────────────────────
-
-    def word_treemap(self) -> dict:
-        STOPWORDS = {
-            "있다", "하다", "되다", "이다", "않다", "없다", "그", "이", "저", "것", "수",
-            "더", "도", "을", "를", "위해", "통해", "에서", "으로", "에게", "부터",
-            "까지", "같다", "보다", "대해", "따라",
-        }
-        rows = []
-        for lc in _LIVES:
-            subset  = self.df[self.df["lifeCycle"] == lc]["input_tokens"].dropna()
-            counter: collections.Counter = collections.Counter()
-            for ts in subset:
-                toks = [t for t in str(ts).split()
-                        if len(t) >= 2 and not t.isdigit() and t not in STOPWORDS]
-                for a, b in zip(toks, toks[1:]):
-                    counter[f"{a} {b}"] += 1
-            for bigram, cnt in counter.most_common(10):
-                rows.append({"lifeCycle": lc, "bigram": bigram, "count": cnt})
-        if not rows:
-            return {}
-        word_df = pd.DataFrame(rows)
-        # 섹션 헤더(생애주기) = LC_COLOR, 빈도 타일 = 연속 스케일
-        cnt_min, cnt_max = word_df["count"].min(), word_df["count"].max()
-        def _interp(v):
-            t = (v - cnt_min) / max(cnt_max - cnt_min, 1)
-            # TEAL_100 → TEAL_900 보간
-            r = int(204 + (19  - 204) * t)
-            g = int(251 + (78  - 251) * t)
-            b = int(241 + (74  - 241) * t)
-            return f"rgb({r},{g},{b})"
-
-        ids, labels, parents, values, colors, cnts = [], [], [], [], [], []
-        for lc in _LIVES:
-            ids.append(lc); labels.append(lc)
-            parents.append(""); values.append(0)
-            colors.append(LC_COLOR.get(lc, NEUTRAL)); cnts.append(None)
-        for _, row in word_df.iterrows():
-            uid = f"{row['lifeCycle']}|{row['bigram']}"
-            ids.append(uid); labels.append(row["bigram"])
-            parents.append(row["lifeCycle"]); values.append(row["count"])
-            colors.append(_interp(row["count"])); cnts.append(row["count"])
-
-        fig = go.Figure(go.Treemap(
-            ids=ids, labels=labels, parents=parents, values=values,
-            marker=dict(
-                colors=colors,
-                line=dict(width=1.5, color=HOVER_BG),
-                colorscale=TREEMAP_SCALE,
-                cmin=cnt_min, cmax=cnt_max,
-                colorbar=dict(title="빈도", thickness=12, len=0.7,
-                              tickfont=dict(size=10), x=1.01),
-                showscale=True,
-            ),
-            hovertemplate="%{label}: %{value:,}회<extra></extra>",
-            textinfo="label+value", textfont=dict(size=13),
-            opacity=_OPACITY,
-        ))
-        fig.update_layout(**_layout(height=480, margin=dict(t=16, b=16, l=16, r=80)))
-        return _to_json(fig)
-
-    # ── 차트 8: Train / Val 생애주기 분할 ────────────────────────────────
-
-    def train_val_bar(self) -> dict:
-        tv = self.df.groupby(["split", "lifeCycle"]).size().reset_index(name="cnt")
-        fig = px.bar(
-            tv, x="lifeCycle", y="cnt", color="split", barmode="stack",
-            color_discrete_map={"train": COLOR_BERT, "validation": "#F4A261"},
-            category_orders={"lifeCycle": _LIVES, "split": ["train", "validation"]},
-            labels={"cnt": "건수", "lifeCycle": "생애주기", "split": "분할"},
-        )
-        fig.update_traces(opacity=_OPACITY)
-        fig.update_layout(**_layout(
-            height=280,
-            xaxis=dict(title="생애주기"), yaxis=dict(title="건수"),
-            legend=dict(orientation="h", y=1.08, x=0.5, xanchor="center"),
-        ))
-        return _to_json(fig)
-
-    # ── 차트 9: 질문 vs 답변 길이 산점도 ─────────────────────────────────
-
-    def len_scatter(self, sample_n: int = 2000) -> dict:
-        sample = self.df.sample(min(sample_n, len(self.df)), random_state=42).copy()
-        sample["q_len"] = sample["input"].str.len()
-        sample["a_len"] = sample["output"].str.len()
-        fig = px.scatter(
-            sample, x="q_len", y="a_len", color="lifeCycle",
-            color_discrete_map=LC_COLOR, opacity=0.45,
-            labels={"q_len": "질문 길이 (chars)", "a_len": "답변 길이 (chars)",
-                    "lifeCycle": "생애주기"},
-            category_orders={"lifeCycle": _LIVES},
-        )
-        fig.update_traces(marker=dict(size=4))
-        fig.update_layout(**_layout(
-            height=300,
-            legend=dict(orientation="h", y=1.08, x=0.5, xanchor="center"),
-        ))
-        return _to_json(fig)
-
-    # ── 차트 10: 진료과별 문서 수 + 평균 질문 길이 (dual-axis) ────────────
-
+    # ── 4: 진료과별 문서 수 + 평균 질문 길이 ────────────────────────────
     def dept_dual_axis(self) -> dict:
         stats = (self.df.groupby("department")
                  .agg(cnt=("input", "count"),
-                      avg_q=("input", lambda x: round(x.str.len().mean(), 1)),
-                      avg_a=("output", lambda x: round(x.str.len().mean(), 1)))
+                      avg_q=("input", lambda x: round(x.str.len().mean(), 1)))
                  .reindex(_DEPTS))
         fig = go.Figure()
         fig.add_trace(go.Bar(
@@ -277,87 +169,67 @@ class ChartBuilder:
         ))
         fig.update_layout(**_layout(
             height=300,
-            yaxis=dict(title="문서 수", gridcolor=GRID_COLOR),
-            yaxis2=dict(title="평균 질문 길이 (chars)",
-                        overlaying="y", side="right", showgrid=False),
-            legend=dict(orientation="h", y=1.12, x=0.5, xanchor="center"),
+            yaxis=_axis("문서 수"),
+            yaxis2=dict(title="", overlaying="y", side="right",
+                        showgrid=False, tickfont=dict(size=12, color=AXIS_COLOR)),
+            annotations=[dict(
+                xref="paper", yref="paper", x=1.0, y=-0.15,
+                text="우축: 평균 질문 길이 (chars)",
+                showarrow=False, xanchor="right",
+                font=dict(size=11, color=TEXT_COLOR),
+            )],
+            legend=dict(orientation="h", y=1.12, x=0.5, xanchor="center",
+                        font=dict(size=12, color=AXIS_COLOR)),
             margin=dict(t=16, b=40, l=60, r=70),
         ))
         return _to_json(fig)
 
-    # ── 차트 11: 생애주기 × 진료과 100% 스택 바 ──────────────────────────
+    # ── 5: 진료과 × 질병 Top 히트맵 ─────────────────────────────────────
+    def dept_disease_heatmap(self, top_n: int = 10) -> dict:
+        return _crosstab_heatmap(
+            self.df, row_col="disease", col_col="department",
+            row_order=None, col_order=_DEPTS, x_title="진료과",
+            height=340, margin=dict(t=16, b=50, l=130, r=60), ann_size=11,
+            exclude_row_val="기타", top_n=top_n,
+        )
 
-    def lifecycle_dept_stacked(self) -> dict:
-        ct = pd.crosstab(self.df["lifeCycle"], self.df["department"],
-                         normalize="index").reindex(_LIVES)[_DEPTS] * 100
-        fig = go.Figure()
-        for i, dept in enumerate(_DEPTS):
-            vals = ct[dept].round(1).tolist()
-            fig.add_trace(go.Bar(
-                name=dept, y=_LIVES, x=vals, orientation="h",
-                marker_color=PALETTE[i], opacity=_OPACITY,
-                text=[f"{v:.0f}%" for v in vals], textposition="inside",
-                insidetextanchor="middle", textfont=dict(size=11, color=HOVER_BG),
-                hovertemplate=f"{dept}: %{{x:.1f}}%<extra></extra>",
-            ))
-        fig.update_layout(**_layout(
-            barmode="stack", height=220,
-            xaxis=dict(title="비율 (%)", range=[0, 100], gridcolor=GRID_COLOR, ticksuffix="%"),
-            yaxis=dict(title=""),
-            legend=dict(orientation="h", y=-0.28, x=0.5, xanchor="center"),
-            margin=dict(t=16, b=90, l=70, r=20),
-        ))
-        return _to_json(fig)
+    # ── 6: 트리맵 계층 데이터 (React용 — Plotly JSON 아님) ───────────────
+    def treemap_data(self) -> dict:
+        # 진료과 타일 크기: 전체 레코드 기준 (기타 포함) → 올바른 비율
+        dept_totals = (self.df.groupby(["lifeCycle", "department"])
+                       .size().reset_index(name="total"))
+        # 상위 질병: 기타 제외
+        disease_g = (self.df[self.df["disease"] != "기타"]
+                     .groupby(["lifeCycle", "department", "disease"])
+                     .size().reset_index(name="cnt"))
+        result = {}
+        for lc, lc_df in dept_totals.groupby("lifeCycle"):
+            result[lc] = {}
+            for _, row in lc_df.iterrows():
+                dept = row["department"]
+                top4_df = disease_g[
+                    (disease_g["lifeCycle"] == lc) &
+                    (disease_g["department"] == dept)
+                ]
+                top4 = top4_df.nlargest(4, "cnt")[["disease", "cnt"]].values.tolist()
+                result[lc][dept] = {
+                    "total": int(row["total"]),
+                    "top": [[str(d), int(c)] for d, c in top4],
+                }
+        return result
 
-    # ── 차트 12: 나이팅게일 로즈 (진료과 × 생애주기) ─────────────────────
-
-    def nightingale_rose(self) -> dict:
-        fig = go.Figure()
-        for lc, color in LC_COLOR.items():
-            counts = [
-                int(((self.df["lifeCycle"] == lc) & (self.df["department"] == d)).sum())
-                for d in _DEPTS
-            ]
-            fig.add_trace(go.Barpolar(
-                r=counts, theta=_DEPTS, name=lc,
-                marker_color=color, opacity=_OPACITY,
-                hovertemplate=f"{lc} · %{{theta}}: %{{r:,}}건<extra></extra>",
-            ))
-        fig.update_layout(**_layout(
-            polar=dict(
-                radialaxis=dict(visible=True, gridcolor=GRID_COLOR,
-                                tickfont=dict(size=10), showticklabels=True),
-                angularaxis=dict(tickfont=dict(size=12)),
-            ),
-            barmode="overlay",
-            legend=dict(orientation="h", y=-0.08, x=0.5, xanchor="center"),
-            height=420, margin=dict(t=16, b=60, l=40, r=40),
-        ))
-        return _to_json(fig)
-
-    # ── 전체 차트 딕셔너리 반환 ──────────────────────────────────────────
-
+    # ── 전체 빌드 ─────────────────────────────────────────────────────────
     def build_all(self) -> dict:
-        print("  ① 질병 롱테일 막대...")
-        charts = {"disease_bar": self.disease_bar()}
-        print("  ② 생애주기 도넛...")
-        charts["lifecycle_pie"] = self.lifecycle_pie()
-        print("  ③ 텍스트 길이 박스플롯...")
-        charts["text_boxplot"] = self.text_boxplot()
-        print("  ⑤ 계층 선버스트...")
-        charts["sunburst"] = self.sunburst()
-        print("  ⑥ 진료과별 Top5 질병...")
-        charts["dept_top10"] = self.dept_top5()
-        print("  ⑦ 빈출 2-gram 트리맵...")
-        charts["word_treemap"] = self.word_treemap()
-        print("  ⑧ Train/Val 분할 막대...")
-        charts["train_val_bar"] = self.train_val_bar()
-        print("  ⑨ 질문·답변 길이 산점도...")
-        charts["len_scatter"] = self.len_scatter()
-        print("  ⑩ 진료과 dual-axis (문서 수 + 평균 질문 길이)...")
-        charts["dept_dual_axis"] = self.dept_dual_axis()
-        print("  ⑪ 생애주기 × 진료과 100% 스택 바...")
-        charts["lifecycle_dept_stacked"] = self.lifecycle_dept_stacked()
-        print("  ⑫ 나이팅게일 로즈...")
-        charts["nightingale_rose"] = self.nightingale_rose()
+        steps = [
+            ("① 생애주기 × 질병 히트맵",     "lifecycle_disease_heatmap", self.lifecycle_disease_heatmap),
+            ("② 질문 길이 박스플롯",           "text_boxplot",              self.text_boxplot),
+            ("③ 질문 길이 히스토그램",         "question_len_histogram",    self.question_len_histogram),
+            ("④ 진료과 문서 수 + 질문 길이",   "dept_dual_axis",            self.dept_dual_axis),
+            ("⑤ 진료과 × 질병 히트맵",        "dept_disease_heatmap",      self.dept_disease_heatmap),
+            ("⑥ 트리맵 데이터",               "treemap_data",              self.treemap_data),
+        ]
+        charts = {}
+        for label, key, fn in steps:
+            print(f"  {label}...")
+            charts[key] = fn()
         return charts

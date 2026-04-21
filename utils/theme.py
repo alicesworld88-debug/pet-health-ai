@@ -7,7 +7,7 @@ chart_builder.py, run_dashboard.py 양쪽에서 import.
 TEAL_50  = "#F0FDFA"
 TEAL_100 = "#CCFBF1"
 TEAL_300 = "#86EFCA"
-TEAL_500 = "#5EAAA8"
+TEAL_500 = "#3A9188"
 TEAL_600 = "#0F766E"
 TEAL_900 = "#134E4A"
 
@@ -15,19 +15,20 @@ TEAL_900 = "#134E4A"
 SUCCESS = "#10B981"
 WARNING = "#F59E0B"
 DANGER  = "#EF4444"
-NEUTRAL = "#94a3b8"
+NEUTRAL = "#6B7280"
 
 # ── UI 공통 ──────────────────────────────────────────────────────────
-TEXT_COLOR  = "#2D3142"
+TEXT_COLOR  = "#1F2937"   # 차트 제목·수치 — 거의 검정
+AXIS_COLOR  = "#4B5563"   # 축 라벨·범례 — 진회색
 HOVER_BG    = "#FFFFFF"
-GRID_COLOR  = "#EDE9E3"
+GRID_COLOR  = "#E5E0D8"
 
 # ── 5-범주 팔레트 (진료과) ────────────────────────────────────────────
 PALETTE = [
-    "#5EAAA8",  # 내과  — light teal
-    "#EC8B74",  # 외과  — light coral
+    "#3A9188",  # 내과  — deep teal
+    "#E07856",  # 외과  — deep coral
     "#F4A261",  # 피부과 — apricot
-    "#8B8FA7",  # 안과  — lavender grey
+    "#6B708F",  # 안과  — lavender grey
     "#F59E0B",  # 치과  — amber
 ]
 
@@ -35,14 +36,14 @@ DEPT_COLORS = dict(zip(["내과", "외과", "피부과", "안과", "치과"], PA
 
 # ── 생애주기 ─────────────────────────────────────────────────────────
 LC_COLOR = {
-    "자견":   "#F4B670",  # 밝은 살구
-    "성견":   "#5EAAA8",  # 밝은 틸
-    "노령견": "#8B8FA7",  # 라벤더 그레이
+    "자견":   "#E89A54",  # 진한 살구
+    "성견":   "#3A9188",  # 진한 틸
+    "노령견": "#6B708F",  # 라벤더 그레이
 }
 
 # ── 모델 비교 ────────────────────────────────────────────────────────
-COLOR_BERT       = "#5EAAA8"  # light teal — BERT
-COLOR_TFIDF      = "#EC8B74"  # light coral — TF-IDF
+COLOR_BERT       = "#3A9188"  # deep teal — BERT
+COLOR_TFIDF      = "#E07856"  # deep coral — TF-IDF
 COLOR_VALIDATION = TEAL_300   # 연청록 — val split
 
 # ── 기타 ─────────────────────────────────────────────────────────────
@@ -51,15 +52,24 @@ COLOR_PRIMARY = TEAL_500
 
 # ── 그라디언트 스케일 ─────────────────────────────────────────────────
 HEATMAP_SCALE = [[0, TEAL_100], [0.5, TEAL_500], [1, TEAL_900]]
+# 이산형 5단계 — 각 구간을 동일 색으로 묶어 범례를 읽기 쉽게
+HEATMAP_SCALE_DISCRETE = [
+    [0.00, TEAL_100], [0.20, TEAL_100],
+    [0.20, "#A8E6D9"], [0.40, "#A8E6D9"],
+    [0.40, TEAL_300],  [0.60, TEAL_300],
+    [0.60, TEAL_500],  [0.80, TEAL_500],
+    [0.80, TEAL_900],  [1.00, TEAL_900],
+]
 TREEMAP_SCALE = [TEAL_100, TEAL_300, TEAL_500, TEAL_600, TEAL_900]
 
 # ── CSS 주입용 변수 문자열 생성 ────────────────────────────────────────
 def build_css() -> str:
     lc = LC_COLOR
     return f"""<style id="theme-override">
-/* ─ 전역 배경 ─ */
+/* ─ 전역 배경 (라이트모드) ─ */
 :root {{ --bg-canvas-override: #FAFAF9; }}
-body, .shell {{ background: #FAFAF9 !important; }}
+:root:not([data-theme="dark"]) body, :root:not([data-theme="dark"]) .shell {{ background: #FAFAF9 !important; }}
+:root[data-theme="dark"] body {{ background: var(--bg) !important; }}
 
 /* ─ 모델 바 ─ */
 .bar-fill.bert  {{ background: {COLOR_BERT}; }}
@@ -80,7 +90,7 @@ body, .shell {{ background: #FAFAF9 !important; }}
 /* ─ 다크모드 생애주기 태그 ─ */
 :root[data-theme="dark"] .tag.life-puppy  {{ color: #FCD34D; background: #92400E30; }}
 :root[data-theme="dark"] .tag.life-adult  {{ color: #5EEAD4; background: {TEAL_600}30; }}
-:root[data-theme="dark"] .tag.life-senior {{ color: #C0C3D8; background: #8B8FA730; }}
+:root[data-theme="dark"] .tag.life-senior {{ color: #C0C3D8; background: #6B708F30; }}
 
 /* ─ 선버스트 hover 팝아웃 ─ */
 .sunburstlayer path {{
@@ -88,7 +98,7 @@ body, .shell {{ background: #FAFAF9 !important; }}
   cursor: pointer;
 }}
 .sunburstlayer path:hover {{
-  filter: brightness(1.18) drop-shadow(0 2px 6px rgba(0,0,0,0.28));
+  filter: brightness(1.15) drop-shadow(0 2px 6px rgba(0,0,0,0.25));
 }}
 
 /* ─ 액센트 변수 오버라이드 ─ */
