@@ -74,7 +74,7 @@ pet-health-ai/
 │   ├── processed/                 # 전처리 결과 CSV, 임베딩 .npy
 │   └── splits/                    # ground_truth.csv
 ├── docs/
-│   ├── ontology.md                # 도메인 개념 모델 정의
+│   ├── concept_model.md           # 도메인 개념 모델 정의
 │   ├── evaluation_tables.md       # 보고서용 평가 수치
 │   ├── aws_migration.md           # AWS 마이그레이션 가이드
 │   └── conventions.md             # 커밋·코드 컨벤션
