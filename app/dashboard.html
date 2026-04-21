@@ -7684,11 +7684,11 @@ function EdaPage() {
       <div className="eda-grid">
         {/* Row 1: 질병 분포 + 생애주기 */}
         <ECard span="span-8" height={340}
-          title="질병 롱테일 분포 · Disease Long-tail"
+          title="질병 롱테일 분포"
           desc="상위 15개 질병 — '기타'(77%) 포함 극단적 롱테일"
           fig={eda.disease_bar}/>
         <ECard span="span-4" height={340}
-          title="생애주기 분포 · Lifecycle"
+          title="생애주기 분포"
           desc="자견 / 성견 / 노령견 균형 분포"
           fig={eda.lifecycle_pie}/>
 
@@ -7704,11 +7704,11 @@ function EdaPage() {
 
         {/* Row 3: 나이팅게일 로즈 + 박스플롯 */}
         <ECard span="span-6" height={420}
-          title="나이팅게일 로즈 · Nightingale Rose"
+          title="나이팅게일 로즈"
           desc="진료과 × 생애주기 방사형 분포 — 내과 편중 뚜렷"
           fig={eda.nightingale_rose}/>
         <ECard span="span-6" height={280}
-          title="텍스트 길이 박스플롯"
+          title="텍스트 길이 분포"
           desc="생애주기별 질문 길이 분포 · 이상치 포함"
           fig={eda.text_boxplot}/>
 
@@ -7718,13 +7718,13 @@ function EdaPage() {
           desc="생애주기별 학습·검증 셋 분포 — 균등 분할 확인"
           fig={eda.train_val_bar}/>
         <ECard span="span-8" height={300}
-          title="질문 vs 답변 길이 산점도"
+          title="질문·답변 길이 분포"
           desc="input × output 길이 상관관계 (샘플 2,000) — 생애주기별 색상"
           fig={eda.len_scatter}/>
 
         {/* Row 5: dual-axis + 100% 스택 */}
         <ECard span="span-6" height={300}
-          title="진료과별 문서 수 · 평균 질문 길이"
+          title="진료과별 문서 수 & 평균 질문 길이"
           desc="막대=문서 수(좌축) · 선=평균 질문 길이(우축) — 외과 질문이 가장 긺"
           fig={eda.dept_dual_axis}/>
         <ECard span="span-6" height={280}
@@ -7734,7 +7734,7 @@ function EdaPage() {
 
         {/* Row 6: 선버스트 전체 폭 */}
         <ECard span="span-12" height={460}
-          title="계층 선버스트 · Hierarchy Sunburst"
+          title="계층 선버스트"
           desc="lifeCycle → department → disease 3단계 드릴다운 — 클릭으로 탐색"
           fig={eda.sunburst}/>
       </div>
