@@ -1,8 +1,9 @@
 """
-APP_DATA 공통 빌더 — run_dashboard.py / streamlit_app.py 양쪽에서 사용.
+APP_DATA 빌더 — run_dashboard.py에서 사용.
 DataLoader 인스턴스를 받아 JSON 직렬화 가능한 dict를 반환.
 """
 import ast
+import time
 import pandas as pd
 from utils.data_loader import DataLoader
 
@@ -108,6 +109,9 @@ def build_eval_queries(dl: DataLoader, tfidf=None, bert=None) -> list[dict]:
 
 
 def build_fail_analysis(dl: DataLoader) -> list[dict]:
+    # 소프트 매치: top-k 결과 중 쿼리와 동일한 disease+lifeCycle 조합 문서가
+    # 하나라도 있으면 hit으로 판정. 의미적 유사 문서 검색이 목적이므로
+    # 정확한 문서 재현(exact match)보다 완화된 기준 적용.
     match  = dl.matching_results
     train  = dl.train
     result = []
@@ -139,19 +143,32 @@ def build_sim_scores(dl: DataLoader) -> dict:
     }
 
 
-def build_demo_results(dl: DataLoader, row_idx: int = 6) -> tuple[list, list]:
+def build_demo_results(dl: DataLoader, tfidf=None, bert=None, row_idx: int = 6) -> tuple[list, list]:
     match = dl.matching_results
     try:
         row = match.iloc[row_idx]
-        bert_ids  = _parse_ids(row["sbert_top5"])[:5]
-        tfidf_ids = _parse_ids(row["tfidf_top5"])[:5]
-        def mk(ids, base_sim):
-            return [
-                {**dl.doc_snippet(i, q_len=200, a_len=200),
-                 "rank": r + 1, "sim": round(base_sim - r * 0.028, 4)}
-                for r, i in enumerate(ids)
-            ]
-        return mk(bert_ids, 0.862), mk(tfidf_ids, 0.693)
+        q_text = str(row["query"])
+        if tfidf is not None and bert is not None:
+            t_idxs, t_scores = tfidf.match(q_text, top_k=5)
+            b_idxs, b_scores = bert.match(q_text, top_k=5)
+            bert_docs  = [{**dl.doc_snippet(i, q_len=200, a_len=200),
+                           "rank": r + 1, "sim": round(float(b_scores[r]), 4)}
+                          for r, i in enumerate(b_idxs[:5])]
+            tfidf_docs = [{**dl.doc_snippet(i, q_len=200, a_len=200),
+                           "rank": r + 1, "sim": round(float(t_scores[r]), 4)}
+                          for r, i in enumerate(t_idxs[:5])]
+        else:
+            bert_ids  = _parse_ids(row["sbert_top5"])[:5]
+            tfidf_ids = _parse_ids(row["tfidf_top5"])[:5]
+            s_b = float(row.get("sbert_score1", 0))
+            s_t = float(row.get("tfidf_score1", 0))
+            bert_docs  = [{**dl.doc_snippet(i, q_len=200, a_len=200),
+                           "rank": r + 1, "sim": round(s_b, 4) if r == 0 else None}
+                          for r, i in enumerate(bert_ids)]
+            tfidf_docs = [{**dl.doc_snippet(i, q_len=200, a_len=200),
+                           "rank": r + 1, "sim": round(s_t, 4) if r == 0 else None}
+                          for r, i in enumerate(tfidf_ids)]
+        return bert_docs, tfidf_docs
     except Exception:
         return [], []
 
@@ -224,11 +241,18 @@ def build_sample_results(dl: DataLoader, suggestions: list[str] | None = None,
 
 
 def build_app_data(dl: DataLoader, include_sample_search: bool = True) -> dict:
-    """run_dashboard.py / streamlit_app.py 공통 APP_DATA 빌더."""
+    """APP_DATA 전체 빌드 — run_dashboard.py 에서 호출."""
     print("  📡 매처 로드 중 (TF-IDF + BERT)...")
     tfidf, bert = _load_matchers(dl)
 
-    demo_bert, demo_tfidf = build_demo_results(dl)
+    print("  ⏱️  추론 시간 측정 중...")
+    _sample_q = SAMPLE_SUGGESTIONS[0]
+    tfidf.match(_sample_q, top_k=5)   # TF-IDF 워밍업
+    bert.match(_sample_q, top_k=5)    # BERT 워밍업
+    _t0 = time.perf_counter(); tfidf.match(_sample_q, top_k=5); tfidf_ms = round((time.perf_counter() - _t0) * 1000, 1)
+    _t0 = time.perf_counter(); bert.match(_sample_q, top_k=5);  bert_ms  = round((time.perf_counter() - _t0) * 1000, 1)
+
+    demo_bert, demo_tfidf = build_demo_results(dl, tfidf=tfidf, bert=bert)
     data = {
         "stats":        build_stats(dl),
         "lifecycle":    build_lifecycle(dl),
@@ -241,6 +265,7 @@ def build_app_data(dl: DataLoader, include_sample_search: bool = True) -> dict:
             "p": "2.87e-193", "n": 21604,
             "desc": "진료과(5개 그룹) × 질문 텍스트 길이 · One-way ANOVA",
         },
+        "inferTime": {"tfidf": tfidf_ms, "bert": bert_ms},
         "sampleSuggestions": SAMPLE_SUGGESTIONS,
         "results":      {"bert": demo_bert, "tfidf": demo_tfidf},
         "evalQueries":  build_eval_queries(dl, tfidf=tfidf, bert=bert),
