@@ -11,7 +11,7 @@
 
 ---
 
-## ❓ 왜 만들었나
+## 왜 만들었나
 
 반려견 보호자는 증상이 생겨도 **어떤 진료과에 가야 할지, 얼마나 급한지** 판단하기 어렵다.
 
@@ -23,7 +23,7 @@
 
 ---
 
-## 📊 결과 요약
+## 결과 요약
 
 | 지표 | TF-IDF | Sentence-BERT | 향상 |
 |------|--------|--------------|------|
@@ -42,7 +42,7 @@
 
 ---
 
-## ⚡ 빠른 시작
+## 빠른 시작
 
 ```bash
 git clone https://github.com/alicesworld88-debug/pet-health-ai.git
@@ -55,7 +55,7 @@ python run_dashboard.py
 
 ---
 
-## 🏗 시스템 아키텍처
+## 시스템 아키텍처
 
 ```mermaid
 flowchart LR
@@ -65,7 +65,7 @@ flowchart LR
     D --> E["🌐 서비스\nS3 웹 호스팅\nReact + Plotly 대시보드"]
 ```
 
-## 📦 데이터 아키텍처
+## 데이터 아키텍처
 
 ```mermaid
 flowchart TD
@@ -83,7 +83,7 @@ flowchart TD
 
 ---
 
-## 🗂 분석 파이프라인
+## 분석 파이프라인
 
 | # | 노트북 | 내용 | 출력 |
 |---|--------|------|------|
@@ -97,7 +97,7 @@ flowchart TD
 
 ---
 
-## 📁 폴더 구조
+## 폴더 구조
 
 ```
 pet-health-ai/
@@ -124,7 +124,7 @@ pet-health-ai/
 
 ---
 
-## 🔑 핵심 기술
+## 핵심 기술
 
 | 구분 | 내용 |
 |------|------|
@@ -137,7 +137,7 @@ pet-health-ai/
 
 ---
 
-## ☁️ 배포 환경
+## 배포 환경
 
 ```
 S3 (alices-project-storage)
