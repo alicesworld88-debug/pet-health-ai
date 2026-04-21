@@ -304,8 +304,8 @@ class ChartBuilder:
             barmode="stack", height=220,
             xaxis=dict(title="비율 (%)", range=[0, 100], gridcolor=GRID_COLOR, ticksuffix="%"),
             yaxis=dict(title=""),
-            legend=dict(orientation="h", y=1.15, x=0.5, xanchor="center"),
-            margin=dict(t=16, b=50, l=70, r=20),
+            legend=dict(orientation="h", y=-0.22, x=0.5, xanchor="center"),
+            margin=dict(t=16, b=70, l=70, r=20),
         ))
         return _to_json(fig)
 
