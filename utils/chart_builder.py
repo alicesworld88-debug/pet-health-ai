@@ -342,9 +342,7 @@ class ChartBuilder:
         charts = {"disease_bar": self.disease_bar()}
         print("  ② 생애주기 도넛...")
         charts["lifecycle_pie"] = self.lifecycle_pie()
-        print("  ③ 진료과×생애주기 히트맵...")
-        charts["dept_heatmap"] = self.dept_heatmap()
-        print("  ④ 텍스트 길이 박스플롯...")
+        print("  ③ 텍스트 길이 박스플롯...")
         charts["text_boxplot"] = self.text_boxplot()
         print("  ⑤ 계층 선버스트...")
         charts["sunburst"] = self.sunburst()
