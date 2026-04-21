@@ -8829,6 +8829,10 @@ function EvalPage() {
                 <div style={{fontSize:11.5,color:"var(--text-muted)",lineHeight:1.6}}>부신피질기능항진증·자궁축농증 등 학습 데이터 희소성으로 유사 문서 부족.</div>
               </div>
             </div>
+            <div style={{marginBottom:16,padding:"10px 14px",background:"var(--bg-soft)",borderRadius:8,border:"1px solid var(--border)",fontSize:12.5,color:"var(--text-muted)",lineHeight:1.75}}>
+              TF-IDF·BERT 공통 한계 영역이 식별되었으며, 이는 단순 매칭 방법론 개선으로 극복이 어렵다.
+              최종 보고서에서 <strong style={{color:"var(--text)"}}>질문 유형 분류 후 유형별 타겟 전략</strong> 수립 예정.
+            </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
               {Object.entries(counts).map(([s,n])=>(
                 <button key={s} onClick={()=>setFilter(s==="all"?filter:filter===s?"all":s)}
