@@ -7563,7 +7563,7 @@ function DataPage() {
       <div className="section-row">
         <div className="card">
           <div className="card-head">
-            <div><h4 className="card-title">생애주기 분포 · Lifecycle balance</h4><p className="card-sub">자견 / 성견 / 노령견 — 균형 잡힌 클래스 분포</p></div>
+            <div><h4 className="card-title">생애주기 분포</h4><p className="card-sub">자견 / 성견 / 노령견 — 균형 잡힌 클래스 분포</p></div>
             <span className="pill"><Icon name="check" size={11}/>Balanced</span>
           </div>
           <div className="stack-bar">
@@ -7580,7 +7580,7 @@ function DataPage() {
         </div>
         <div className="card">
           <div className="card-head">
-            <div><h4 className="card-title">진료과 분포 · Department</h4><p className="card-sub">내과가 전체 절반 이상 — 불균형 주의</p></div>
+            <div><h4 className="card-title">진료과 분포</h4><p className="card-sub">내과가 전체 절반 이상 — 불균형 주의</p></div>
             <span className="pill" style={{background:"color-mix(in oklch,var(--warning) 10%,transparent)",color:"var(--warning)",borderColor:"transparent"}}><Icon name="info" size={11}/>Imbalanced</span>
           </div>
           <div className="donut-wrap">
@@ -7599,7 +7599,7 @@ function DataPage() {
       <div className="section-row">
         <div className="card">
           <div className="card-head">
-            <div><h4 className="card-title">질병 Top 10 · Long-tail</h4><p className="card-sub">"기타"가 16,611건으로 77% 차지 — 극단적 롱테일</p></div>
+            <div><h4 className="card-title">질병 Top 10</h4><p className="card-sub">"기타"가 16,611건으로 77% 차지 — 극단적 롱테일</p></div>
           </div>
           <div className="vstack" style={{gap:2,marginTop:4}}>
             {d.diseaseTop.map((x,i)=>{
@@ -7615,7 +7615,7 @@ function DataPage() {
           </div>
         </div>
         <div className="card">
-          <div className="card-head"><div><h4 className="card-title">텍스트 길이 통계 · Text length (chars)</h4><p className="card-sub">답변이 질문보다 대체로 20% 긴 경향</p></div></div>
+          <div className="card-head"><div><h4 className="card-title">텍스트 길이 통계</h4><p className="card-sub">답변이 질문보다 대체로 20% 긴 경향</p></div></div>
           <table className="table" style={{marginTop:4}}>
             <thead><tr><th>통계</th><th>질문</th><th>답변</th></tr></thead>
             <tbody>
@@ -7743,12 +7743,12 @@ function EdaPage() {
 
         {/* Row 3: 나이팅게일 로즈 + 박스플롯 */}
         <ECard span="span-6" height={420}
-          title="나이팅게일 로즈"
-          desc="진료과 × 생애주기 방사형 분포 — 내과 편중 뚜렷"
+          title="진료과 × 생애주기 분포"
+          desc="나이팅게일 로즈 — 내과 편중 뚜렷"
           fig={eda.nightingale_rose}/>
         <ECard span="span-6" height={280}
-          title="텍스트 길이 분포"
-          desc="생애주기별 질문 길이 분포 · 이상치 포함"
+          title="생애주기별 질문 길이 분포"
+          desc="박스플롯 — 이상치 포함"
           fig={eda.text_boxplot}/>
 
         {/* Row 4: Train/Val 균형 + 길이 산점도 */}
@@ -7758,7 +7758,7 @@ function EdaPage() {
           fig={eda.train_val_bar}/>
         <ECard span="span-8" height={300}
           title="질문·답변 길이 분포"
-          desc="input × output 길이 상관관계 (샘플 2,000) — 생애주기별 색상"
+          desc="질문-답변 길이 상관관계 · 샘플 2,000건 — 생애주기별"
           fig={eda.len_scatter}/>
 
         {/* Row 5: dual-axis + 100% 스택 */}
@@ -7773,8 +7773,8 @@ function EdaPage() {
 
         {/* Row 6: 선버스트 전체 폭 */}
         <ECard span="span-12" height={460}
-          title="계층 선버스트"
-          desc="lifeCycle → department → disease 3단계 드릴다운 — 클릭으로 탐색"
+          title="생애주기 · 진료과 · 질병 계층 구조"
+          desc="선버스트 — 3단계 드릴다운, 클릭으로 탐색"
           fig={eda.sunburst}/>
       </div>
     </div>
@@ -7825,14 +7825,14 @@ function EvalPage() {
         };
         return (
           <div className="card">
-            <div className="card-head"><div><h4 className="card-title">Hit@k 성능 곡선 · Precision Curve</h4><p className="card-sub">k 증가에 따른 누적 검색 성능 — BERT가 전 구간 우위</p></div></div>
+            <div className="card-head"><div><h4 className="card-title">Hit@k 성능 곡선</h4><p className="card-sub">k 증가에 따른 누적 검색 성능 — BERT가 전 구간 우위</p></div></div>
             <PlotlyChart fig={fig} height={240}/>
           </div>
         );
       })()}
       <div className="section-row">
         <div className="card">
-          <div className="card-head"><div><h4 className="card-title">전체 성능 비교 · Overall</h4><p className="card-sub">TF-IDF vs Sentence-BERT (ko-sroberta-multitask)</p></div></div>
+          <div className="card-head"><div><h4 className="card-title">전체 성능 비교</h4><p className="card-sub">TF-IDF vs Sentence-BERT (ko-sroberta-multitask)</p></div></div>
           <div className="group-bars">
             {M.overall.map(m=>{
               const scale=(v)=>(v/70)*100;
@@ -7849,7 +7849,7 @@ function EvalPage() {
           </div>
         </div>
         <div className="card">
-          <div className="card-head"><div><h4 className="card-title">지표 테이블 · Metrics table</h4><p className="card-sub">델타는 절대 퍼센트포인트(%p)</p></div></div>
+          <div className="card-head"><div><h4 className="card-title">모델 성능 지표</h4><p className="card-sub">델타는 절대 퍼센트포인트(%p)</p></div></div>
           <table className="table">
             <thead><tr><th>지표</th><th>TF-IDF</th><th>BERT</th><th>Δ</th></tr></thead>
             <tbody>
@@ -7863,7 +7863,7 @@ function EvalPage() {
         </div>
       </div>
       <div className="card">
-        <div className="card-head"><div><h4 className="card-title">생애주기별 Hit@5 · By lifecycle</h4><p className="card-sub">성견 구간에서만 TF-IDF가 우위 — 키워드 중심 질의 분포로 추정</p></div></div>
+        <div className="card-head"><div><h4 className="card-title">생애주기별 Hit@5</h4><p className="card-sub">성견 구간에서만 TF-IDF가 우위 — 키워드 중심 질의 분포로 추정</p></div></div>
         <div className="group-bars">
           {M.byLifecycle.map(l=>{
             const winner=l.bert>l.tfidf?"bert":"tfidf";
@@ -7901,7 +7901,7 @@ function EvalPage() {
         };
         return (
           <div className="card">
-            <div className="card-head"><div><h4 className="card-title">유사도 점수 분포 · Similarity Score Distribution</h4><p className="card-sub">GT 쿼리 50개 Top-1 점수 히스토그램 — BERT가 전반적으로 높은 유사도</p></div></div>
+            <div className="card-head"><div><h4 className="card-title">유사도 점수 분포</h4><p className="card-sub">GT 쿼리 50개 Top-1 점수 히스토그램 — BERT가 전반적으로 높은 유사도</p></div></div>
             <PlotlyChart fig={fig} height={240}/>
           </div>
         );
@@ -7916,7 +7916,7 @@ function EvalPage() {
         const rows = filter==="all" ? fa : fa.filter(r=>r.status===filter);
         return (
           <div className="card">
-            <div className="card-head"><div><h4 className="card-title">실패 쿼리 분석 · Failure Analysis</h4><p className="card-sub">Hit@5 기준 쿼리별 TF-IDF / BERT 성공 여부</p></div></div>
+            <div className="card-head"><div><h4 className="card-title">실패 쿼리 분석</h4><p className="card-sub">Hit@5 기준 쿼리별 TF-IDF / BERT 성공 여부</p></div></div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
               {Object.entries(counts).map(([s,n])=>(
                 <button key={s} onClick={()=>setFilter(s==="all"?filter:filter===s?"all":s)}
@@ -7947,7 +7947,7 @@ function EvalPage() {
       })()}
       {d.anova && (
         <div className="card">
-          <div className="card-head"><div><h4 className="card-title">진료과별 질문 길이 분산 분석 · ANOVA</h4><p className="card-sub">{d.anova.desc}</p></div></div>
+          <div className="card-head"><div><h4 className="card-title">진료과별 질문 길이 분산 분석</h4><p className="card-sub">{d.anova.desc}</p></div></div>
           <div className="metric-grid" style={{gridTemplateColumns:"repeat(4,1fr)"}}>
             <div className="metric"><div className="label">F 통계량</div><div className="value" style={{fontSize:22}}>{d.anova.f.toFixed(2)}</div><div className="foot">F({d.anova.df_between}, {d.anova.df_within})</div></div>
             <div className="metric"><div className="label">p-value</div><div className="value" style={{fontSize:22}}>{d.anova.p}</div><div className="foot">p &lt; 0.001</div></div>
