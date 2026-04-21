@@ -77,22 +77,34 @@ def build_metrics(dl: DataLoader) -> dict:
     }
 
 
-def build_eval_queries(dl: DataLoader) -> list[dict]:
+def build_eval_queries(dl: DataLoader, tfidf=None, bert=None) -> list[dict]:
     match = dl.matching_results
-    return [
-        {
+    queries = []
+    for _, row in match.iterrows():
+        q_text = str(row["query"])
+        if tfidf is not None and bert is not None:
+            t_idxs, t_scores = tfidf.match(q_text, top_k=5)
+            b_idxs, b_scores = bert.match(q_text, top_k=5)
+            tfidf_docs = [{**dl.doc_snippet(i), "sim": round(float(t_scores[r]), 4)}
+                          for r, i in enumerate(t_idxs[:5])]
+            bert_docs  = [{**dl.doc_snippet(i), "sim": round(float(b_scores[r]), 4)}
+                          for r, i in enumerate(b_idxs[:5])]
+        else:
+            s_t = float(row.get("tfidf_score1", 0))
+            s_b = float(row.get("sbert_score1", 0))
+            tfidf_docs = [{**dl.doc_snippet(i), "sim": round(s_t, 4) if r == 0 else None}
+                          for r, i in enumerate(_parse_ids(row["tfidf_top5"])[:5])]
+            bert_docs  = [{**dl.doc_snippet(i), "sim": round(s_b, 4) if r == 0 else None}
+                          for r, i in enumerate(_parse_ids(row["sbert_top5"])[:5])]
+        queries.append({
             "id":      str(row["query_id"]),
             "life":    str(row["lifeCycle"]),
             "dept":    str(row["department"]),
             "disease": str(row["disease"]),
-            "title":   str(row["query"])[:100],
-            "results": {
-                "tfidf": [dl.doc_snippet(i) for i in _parse_ids(row["tfidf_top5"])[:5]],
-                "bert":  [dl.doc_snippet(i) for i in _parse_ids(row["sbert_top5"])[:5]],
-            },
-        }
-        for _, row in match.iterrows()
-    ]
+            "title":   q_text[:100],
+            "results": {"tfidf": tfidf_docs, "bert": bert_docs},
+        })
+    return queries
 
 
 def build_fail_analysis(dl: DataLoader) -> list[dict]:
@@ -174,20 +186,24 @@ SAMPLE_SUGGESTIONS = [
 ]
 
 
-def build_sample_results(dl: DataLoader, suggestions: list[str] | None = None) -> dict:
-    """샘플 제안별 TF-IDF + BERT 실검색 결과 (미리 계산)."""
+def _load_matchers(dl: DataLoader):
+    """TF-IDF + BERT 매처를 한 번만 로드해서 반환."""
     from utils.matcher import TFIDFMatcher, BERTMatcher
-    if suggestions is None:
-        suggestions = SAMPLE_SUGGESTIONS
     train = dl.train
-
     print("  🔍 TF-IDF 피팅 중...")
     tfidf = TFIDFMatcher().fit(train["input"].fillna("").tolist())
-
     print("  🤖 BERT 임베딩 로드 중...")
     bert = BERTMatcher()
     bert.load_or_build(train["input_normalized"].fillna("").tolist())
+    return tfidf, bert
 
+
+def build_sample_results(dl: DataLoader, suggestions: list[str] | None = None,
+                         matchers=None) -> dict:
+    """샘플 제안별 TF-IDF + BERT 실검색 결과 (미리 계산)."""
+    if suggestions is None:
+        suggestions = SAMPLE_SUGGESTIONS
+    tfidf, bert = matchers if matchers else _load_matchers(dl)
     results = {}
     for q in suggestions:
         t_idxs, t_scores = tfidf.match(q)
@@ -209,6 +225,9 @@ def build_sample_results(dl: DataLoader, suggestions: list[str] | None = None) -
 
 def build_app_data(dl: DataLoader, include_sample_search: bool = True) -> dict:
     """run_dashboard.py / streamlit_app.py 공통 APP_DATA 빌더."""
+    print("  📡 매처 로드 중 (TF-IDF + BERT)...")
+    tfidf, bert = _load_matchers(dl)
+
     demo_bert, demo_tfidf = build_demo_results(dl)
     data = {
         "stats":        build_stats(dl),
@@ -224,11 +243,11 @@ def build_app_data(dl: DataLoader, include_sample_search: bool = True) -> dict:
         },
         "sampleSuggestions": SAMPLE_SUGGESTIONS,
         "results":      {"bert": demo_bert, "tfidf": demo_tfidf},
-        "evalQueries":  build_eval_queries(dl),
+        "evalQueries":  build_eval_queries(dl, tfidf=tfidf, bert=bert),
         "failAnalysis": build_fail_analysis(dl),
         "simScores":    build_sim_scores(dl),
     }
     if include_sample_search:
         print("  📡 샘플 검색 결과 미리 계산 중...")
-        data["sampleResults"] = build_sample_results(dl)
+        data["sampleResults"] = build_sample_results(dl, matchers=(tfidf, bert))
     return data
