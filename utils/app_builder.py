@@ -261,8 +261,8 @@ def build_app_data(dl: DataLoader, include_sample_search: bool = True) -> dict:
         "textStats":    build_text_stats(dl),
         "metrics":      build_metrics(dl),
         "anova": {
-            "f": 229.46, "df_between": 4, "df_within": 21599,
-            "p": "2.87e-193", "n": 21604,
+            "f": 229.48, "df_between": 4, "df_within": 21599,
+            "p": "2.77e-193", "n": 21604,
             "desc": "진료과(5개 그룹) × 질문 텍스트 길이 · One-way ANOVA",
         },
         "inferTime": {"tfidf": tfidf_ms, "bert": bert_ms},
