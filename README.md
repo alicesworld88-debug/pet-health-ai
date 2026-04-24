@@ -76,13 +76,13 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    NB["노트북 실행\n결과 사전 계산"] --> AB["app_builder.py\ndashboard.html 생성"]
+    NB["Batch Processing\nNotebooks 01~07"] --> AB["app_builder.py\ndashboard.html 생성"]
     AB --> DP["deploy_aws.py\nS3 업로드"]
     DP --> S3["S3\ndashboard/index.html"]
     S3 --> U["사용자\n결과 열람"]
 ```
 
-평가 결과를 HTML에 사전 임베딩 후 S3에 정적 배포 — Offline Precomputation (No real-time inference)
+평가 결과를 HTML에 사전 임베딩 후 S3에 정적 배포
 
 **목표 — 실시간 API 서비스**
 
