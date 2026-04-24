@@ -126,22 +126,34 @@ pet-health-ai/
 
 ## 배포 환경
 
-```
-S3 (alices-project-storage)
-└── pet-health-ai/
-    ├── dashboard/index.html   ← 인터랙티브 대시보드 (현재)
-    └── data/
-        ├── processed/
-        ├── embeddings/        ← BERT 임베딩 .npy
-        └── splits/
+### 현재 — S3 정적 호스팅
+
+```mermaid
+flowchart LR
+    U["사용자"] --> S3["S3\ndashboard/index.html"]
+    S3 --> B["브라우저\n전처리 · TF-IDF · BERT 매칭"]
+    B --> D["S3 데이터\ncorpus.csv\ndb_embeddings.npy"]
+    B --> R["상위 5개 답변 반환"]
 ```
 
-### 아키텍처 특징
-- **사전 계산된 임베딩**: BERT 추론을 미리 수행해 S3에 `.npy` 형태로 저장
-- **클라이언트 사이드 매칭**: 브라우저에서 임베딩을 로드해 서버 호출 없이 즉시 응답
+- 서버 없이 브라우저에서 직접 매칭 실행 (BERT 임베딩 사전 계산)
+- `deploy_aws.py`로 S3 수동 배포
 
-### 확장 방향
-실시간 쿼리 처리를 위한 Lambda + BERT 추론 연계 (최종 발표 목표)
+### 목표 — 실시간 API 서비스
+
+```mermaid
+flowchart LR
+    U["사용자"] --> AG["API Gateway"]
+    AG --> LM["Lambda\n전처리 · TF-IDF"]
+    LM --> SM["SageMaker Endpoint\nBERT 임베딩 · 유사도"]
+    LM --> S3["S3\ncorpus.csv"]
+    SM --> R["상위 5개 답변 반환"]
+    GH["GitHub Actions\nCI/CD"] --> AG
+```
+
+- 쿼리 입력 시 실시간 BERT 추론
+- GitHub Actions 기반 CI/CD 자동 배포
+- CloudWatch 모니터링 연계
 
 ---
 
