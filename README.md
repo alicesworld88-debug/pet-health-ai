@@ -64,8 +64,8 @@ python run_dashboard.py
 
 ```mermaid
 flowchart LR
-    A["데이터 수집\nAI Hub JSON\n21,604건"] --> B["전처리\nKoNLPy Okt\n구어체 정규화"]
-    B --> C["모델링\nTF-IDF Vectorizer\nko-sroberta 임베딩"]
+    A["데이터 수집\nAI Hub JSON\n21,604건"] --> B["전처리\nKoNLPy Okt\nColloquial Normalization"]
+    B --> C["모델링\nTF-IDF (Sparse)\nko-sRoBERTa (Dense)"]
     C --> D["평가\nGround Truth 50 queries\nHit@1/3/5 · MAP@5"]
     D --> E["서비스\nS3 웹 호스팅\n인터랙티브 대시보드"]
 ```
@@ -82,17 +82,17 @@ flowchart LR
     S3 --> U["사용자\n결과 열람"]
 ```
 
-평가 결과를 HTML에 사전 임베딩 후 S3에 정적 배포 — 실시간 추론 없음
+평가 결과를 HTML에 사전 임베딩 후 S3에 정적 배포 — Offline Precomputation (No real-time inference)
 
 **목표 — 실시간 API 서비스**
 
 ```mermaid
 flowchart LR
     U["사용자"] --> AG["API Gateway"]
-    AG --> LM["Lambda\n전처리 · TF-IDF"]
-    LM --> SM["SageMaker Endpoint\nBERT 임베딩 · 유사도"]
+    AG --> LM["Lambda\n전처리 · Sparse Retrieval (TF-IDF)"]
+    LM --> SM["SageMaker Endpoint\nDense Retrieval (BERT + Similarity)"]
     LM --> S3["S3\ncorpus.csv"]
-    SM --> R["상위 5개 답변 반환"]
+    SM --> R["Top-5 Results"]
 ```
 
 쿼리 입력 시 실시간 BERT 추론 · CloudWatch 모니터링 연계
