@@ -145,9 +145,9 @@ pet-health-ai/
 | 구분 | 내용 |
 |------|------|
 | 형태소 분석 | KoNLPy Okt — 명사/동사/형용사 추출, 불용어 제거 |
-| 구어체 정규화 | 구어체 → 표준 의학 용어 변환 사전 (`COLLOQUIAL_MAP`) |
-| TF-IDF 매칭 | `TfidfVectorizer` + 코사인 유사도 |
-| BERT 매칭 | `jhgan/ko-sroberta-multitask` — 한국어 의미 임베딩 |
+| Colloquial Normalization | 구어체 → 표준 의학 용어 변환 사전 (`COLLOQUIAL_MAP`) |
+| Sparse Retrieval | `TfidfVectorizer` + 코사인 유사도 |
+| Dense Retrieval | `jhgan/ko-sroberta-multitask` — 한국어 의미 임베딩 |
 | 평가 | Hit@1/3/5, MAP@5, 소프트 매치 기준 |
 | 시각화 | Plotly + React (Babel standalone) |
 
