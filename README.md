@@ -60,6 +60,8 @@ python run_dashboard.py
 
 ## 시스템 아키텍처
 
+### 파이프라인
+
 ```mermaid
 flowchart LR
     A["데이터 수집\nAI Hub JSON\n21,604건"] --> B["전처리\nKoNLPy Okt\n구어체 정규화"]
@@ -67,6 +69,33 @@ flowchart LR
     C --> D["평가\nGround Truth 50 queries\nHit@1/3/5 · MAP@5"]
     D --> E["서비스\nS3 웹 호스팅\n인터랙티브 대시보드"]
 ```
+
+### 인프라
+
+**현재 — S3 정적 호스팅**
+
+```mermaid
+flowchart LR
+    U["사용자"] --> S3["S3\ndashboard/index.html"]
+    S3 --> B["브라우저\n전처리 · TF-IDF · BERT 매칭"]
+    B --> D["S3 데이터\ncorpus.csv\ndb_embeddings.npy"]
+    B --> R["상위 5개 답변 반환"]
+```
+
+서버 없이 브라우저에서 직접 매칭 실행 (BERT 임베딩 사전 계산) — `deploy_aws.py`로 수동 배포
+
+**목표 — 실시간 API 서비스**
+
+```mermaid
+flowchart LR
+    U["사용자"] --> AG["API Gateway"]
+    AG --> LM["Lambda\n전처리 · TF-IDF"]
+    LM --> SM["SageMaker Endpoint\nBERT 임베딩 · 유사도"]
+    LM --> S3["S3\ncorpus.csv"]
+    SM --> R["상위 5개 답변 반환"]
+```
+
+쿼리 입력 시 실시간 BERT 추론 · CloudWatch 모니터링 연계
 
 ---
 
@@ -124,36 +153,6 @@ pet-health-ai/
 
 ---
 
-## 배포 환경
-
-### 현재 — S3 정적 호스팅
-
-```mermaid
-flowchart LR
-    U["사용자"] --> S3["S3\ndashboard/index.html"]
-    S3 --> B["브라우저\n전처리 · TF-IDF · BERT 매칭"]
-    B --> D["S3 데이터\ncorpus.csv\ndb_embeddings.npy"]
-    B --> R["상위 5개 답변 반환"]
-```
-
-- 서버 없이 브라우저에서 직접 매칭 실행 (BERT 임베딩 사전 계산)
-- `deploy_aws.py`로 S3 수동 배포
-
-### 목표 — 실시간 API 서비스
-
-```mermaid
-flowchart LR
-    U["사용자"] --> AG["API Gateway"]
-    AG --> LM["Lambda\n전처리 · TF-IDF"]
-    LM --> SM["SageMaker Endpoint\nBERT 임베딩 · 유사도"]
-    LM --> S3["S3\ncorpus.csv"]
-    SM --> R["상위 5개 답변 반환"]
-```
-
-- 쿼리 입력 시 실시간 BERT 추론
-- CloudWatch 모니터링 연계
-
----
 
 ## 작성자
 
