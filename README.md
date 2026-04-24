@@ -76,13 +76,13 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    U["사용자"] --> S3["S3\ndashboard/index.html"]
-    S3 --> B["브라우저\n전처리 · TF-IDF · BERT 매칭"]
-    B --> D["S3 데이터\ncorpus.csv\ndb_embeddings.npy"]
-    B --> R["상위 5개 답변 반환"]
+    NB["노트북 실행\n결과 사전 계산"] --> AB["app_builder.py\ndashboard.html 생성"]
+    AB --> DP["deploy_aws.py\nS3 업로드"]
+    DP --> S3["S3\ndashboard/index.html"]
+    S3 --> U["사용자\n결과 열람"]
 ```
 
-서버 없이 브라우저에서 직접 매칭 실행 (BERT 임베딩 사전 계산) — `deploy_aws.py`로 수동 배포
+평가 결과를 HTML에 사전 임베딩 후 S3에 정적 배포 — 실시간 추론 없음
 
 **목표 — 실시간 API 서비스**
 
