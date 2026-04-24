@@ -148,11 +148,9 @@ flowchart LR
     LM --> SM["SageMaker Endpoint\nBERT 임베딩 · 유사도"]
     LM --> S3["S3\ncorpus.csv"]
     SM --> R["상위 5개 답변 반환"]
-    GH["GitHub Actions\nCI/CD"] --> AG
 ```
 
 - 쿼리 입력 시 실시간 BERT 추론
-- GitHub Actions 기반 CI/CD 자동 배포
 - CloudWatch 모니터링 연계
 
 ---
