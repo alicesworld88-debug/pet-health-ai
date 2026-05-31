@@ -141,8 +141,9 @@ class EmergencyAgent(BaseAgent):
 
 
 # ── intent 분류 키워드 ──────────────────────────────────────────────────
+# '피' 대신 '토혈', '혈변', '출혈'로 세분화 — '피부' 오탐 방지
 
-_EMERGENCY_KEYWORDS = {'먹었어', '삼켰어', '응급', '쓰러', '경련', '발작', '피', '토혈'}
+_EMERGENCY_KEYWORDS = {'먹었어', '삼켰어', '응급', '쓰러', '경련', '발작', '토혈', '혈변', '출혈', '의식'}
 _TREATMENT_KEYWORDS = {'수술', '마취', 'mri', 'ct', '시술', '처치', '재활', '입원', '퇴원'}
 
 
@@ -199,6 +200,7 @@ def build_pipeline(retriever_type: str = "bert") -> ChatPipeline:
     """
     파이프라인 한 줄 초기화.
     retriever_type: 'bert' (기본) 또는 'tfidf'
+    전체 21,604건 코퍼스 사용 (train 19,205 + validation 2,399)
     """
     from utils.config import DATA_PROCESSED
     from utils.matcher import BERTMatcher, TFIDFMatcher
@@ -207,7 +209,8 @@ def build_pipeline(retriever_type: str = "bert") -> ChatPipeline:
     db_corpus = corpus_df["input_normalized"].fillna("").tolist()
 
     if retriever_type == "bert":
-        retriever = BERTMatcher().load_or_build(db_corpus)
+        full_emb_path = DATA_PROCESSED / "embeddings" / "full_embeddings.npy"
+        retriever = BERTMatcher(embed_path=full_emb_path).load_or_build(db_corpus)
     elif retriever_type == "tfidf":
         tokens = corpus_df["input_tokens"].fillna("").tolist()
         retriever = TFIDFMatcher().fit(tokens)

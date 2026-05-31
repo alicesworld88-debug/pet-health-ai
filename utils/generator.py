@@ -56,6 +56,13 @@ def generate_answer(
         }]
     }
 
-    r = requests.post(url, json=payload, timeout=30)
-    r.raise_for_status()
-    return r.json()["candidates"][0]["content"]["parts"][0]["text"]
+    try:
+        r = requests.post(url, json=payload, timeout=30)
+        r.raise_for_status()
+        return r.json()["candidates"][0]["content"]["parts"][0]["text"]
+    except requests.exceptions.Timeout:
+        return "죄송합니다, 답변 생성에 시간이 걸리고 있어요. 잠시 후 다시 시도해 주세요."
+    except requests.exceptions.HTTPError as e:
+        return f"답변 생성 중 오류가 발생했습니다. ({e.response.status_code})"
+    except (KeyError, IndexError):
+        return "답변을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요."

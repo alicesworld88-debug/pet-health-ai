@@ -8,6 +8,7 @@ TF-IDF / Sentence-BERT 매칭 모듈.
     build_tfidf, match_tfidf, load_or_build_embeddings, match_sbert,
     top_k_accuracy, mean_reciprocal_rank
 """
+import re
 import numpy as np
 from pathlib import Path
 from functools import cached_property
@@ -16,6 +17,15 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
 
 from utils.config import DATA_PROCESSED
+
+# 한국어 조사·어미 근사 제거 (corpus의 형태소 토큰과 어휘 일치율 향상)
+_JOSA = re.compile(r'(이|가|을|를|은|는|에|의|와|과|로|으로|에서|도|만|까지|부터|이나|이라고|이라|야|아|여|이여)$')
+
+def _normalize_query(text: str) -> str:
+    """쿼리 어절에서 주요 조사·어미를 제거해 TF-IDF 어휘와 매칭률을 높임."""
+    tokens = text.strip().split()
+    stripped = [_JOSA.sub('', t) for t in tokens]
+    return ' '.join(stripped)
 
 SBERT_MODEL = "jhgan/ko-sroberta-multitask"
 EMBED_PATH  = DATA_PROCESSED / "embeddings" / "db_embeddings.npy"
@@ -37,10 +47,14 @@ class TFIDFMatcher:
         return self
 
     def match(self, query: str, top_k: int = 5) -> tuple[list[int], list[float]]:
-        """쿼리 → 코사인 유사도 기준 상위 top_k (인덱스, 점수) 반환."""
+        """쿼리 → 코사인 유사도 기준 상위 top_k (인덱스, 점수) 반환.
+        corpus는 형태소 토큰으로 구축됐으므로 쿼리도 같은 방식으로 전처리.
+        """
         if self._vectorizer is None:
             raise RuntimeError("fit()을 먼저 호출하세요.")
-        vec    = self._vectorizer.transform([query])
+        # 조사·어미 제거 후 어절 분리 (KoNLPy 없이 근사 처리)
+        normalized = _normalize_query(query)
+        vec    = self._vectorizer.transform([normalized])
         scores = cosine_similarity(vec, self._matrix).flatten()
         idx    = scores.argsort()[::-1][:top_k]
         return idx.tolist(), scores[idx].tolist()
