@@ -49,6 +49,7 @@ class ChatResponseBody(BaseModel):
     intent: str
     answer: str
     sources: list[SourceDoc]
+    clarify_question: str | None = None   # VeNom 분산 증상 되묻기
 
 
 # ── 엔드포인트 ────────────────────────────────────────────────
@@ -72,6 +73,7 @@ def chat(req: ChatRequest):
     return ChatResponseBody(
         intent=resp.intent,
         answer=resp.answer,
+        clarify_question=resp.clarify_question,
         sources=[
             SourceDoc(input=d.input, output=d.output, score=d.score)
             for d in resp.sources[:3]

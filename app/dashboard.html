@@ -9060,6 +9060,14 @@ function ChatBubble({msg}) {
         borderRadius:"4px 14px 14px 14px",padding:"10px 14px",fontSize:14,lineHeight:1.7,whiteSpace:"pre-wrap"}}>
         {msg.text}
       </div>
+      {msg.clarify && (
+        <div style={{marginLeft:32,maxWidth:"80%",marginTop:4,background:"oklch(0.96 0.04 75)",
+          border:"1px solid oklch(0.88 0.08 75)",borderRadius:10,padding:"9px 13px",
+          fontSize:13,color:"oklch(0.5 0.16 75)",display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:15}}>🤔</span>
+          <span>{msg.clarify}</span>
+        </div>
+      )}
       {msg.sources && msg.sources.length > 0 && (
         <details style={{marginLeft:32,maxWidth:"80%"}}>
           <summary style={{fontSize:11.5,color:"var(--text-subtle)",cursor:"pointer",fontFamily:"var(--font-mono)",userSelect:"none"}}>
@@ -9116,7 +9124,7 @@ function ChatPage() {
       });
       if (!res.ok) throw new Error(`서버 오류 (${res.status})`);
       const data = await res.json();
-      setMessages(prev=>[...prev,{role:"ai",text:data.answer,intent:data.intent,sources:data.sources}]);
+      setMessages(prev=>[...prev,{role:"ai",text:data.answer,intent:data.intent,sources:data.sources,clarify:data.clarify_question}]);
     } catch(e) {
       setError(e.message.includes("Failed to fetch")
         ? "서버에 연결할 수 없어요. python run_api.py 를 실행한 뒤 다시 시도해 주세요."

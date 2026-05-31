@@ -35,10 +35,11 @@ class RetrievedDoc:
 @dataclass
 class ChatResponse:
     """채팅 파이프라인의 최종 출력."""
-    query:   str
-    intent:  str                        # 'symptom' | 'treatment' | 'emergency'
-    answer:  str
-    sources: list[RetrievedDoc] = field(default_factory=list)
+    query:            str
+    intent:           str                        # 'symptom' | 'treatment' | 'emergency'
+    answer:           str
+    sources:          list[RetrievedDoc] = field(default_factory=list)
+    clarify_question: str | None = None          # VeNom 분산 증상 → 되묻기 질문
 
 
 # ── Retriever 인터페이스 ───────────────────────────────────────────────
@@ -146,6 +147,30 @@ class EmergencyAgent(BaseAgent):
 _EMERGENCY_KEYWORDS = {'먹었어', '삼켰어', '응급', '쓰러', '경련', '발작', '토혈', '혈변', '출혈', '의식'}
 _TREATMENT_KEYWORDS = {'수술', '마취', 'mri', 'ct', '시술', '처치', '재활', '입원', '퇴원'}
 
+# ── VeNom 기반 되묻기 질문 ────────────────────────────────────────────────
+# VeNom 데모에서 매칭률 분산이 확인된 증상 → 챗봇이 하위 분류를 위해 추가 질문
+# (VeNom presenting complaints 데이터 기반, 2026-05-31 검증)
+_CLARIFY_QUESTIONS: dict[str, str] = {
+    # 구토 — 원본 구어체 + 정규화 표현 모두 포함
+    '구토':      '혈액이 섞여 있었나요? (갈색·붉은색이면 토혈일 수 있어요)',
+    '토해':      '혈액이 섞여 있었나요? (갈색·붉은색이면 토혈일 수 있어요)',
+    '토했':      '혈액이 섞여 있었나요? (갈색·붉은색이면 토혈일 수 있어요)',
+    '구역질':    '혈액이 섞여 있었나요? (갈색·붉은색이면 토혈일 수 있어요)',
+    # 기침
+    '기침':      '숨을 힘들어하거나 호흡 곤란 증상도 함께 있나요?',
+    '콜록':      '숨을 힘들어하거나 호흡 곤란 증상도 함께 있나요?',
+    # 다음증/다갈증
+    '다갈증':    '소변도 평소보다 많이 보나요? (다뇨증)',
+    '물을 많이': '소변도 평소보다 많이 보나요? (다뇨증)',
+    # 부종
+    '부종':      '어느 부위가 부어 있나요? (배, 다리, 얼굴 등)',
+    '부어':      '어느 부위가 부어 있나요? (배, 다리, 얼굴 등)',
+    # 피부 발적/발진
+    '피부 발적': '두드러기나 발진도 함께 있나요, 아니면 그냥 붉어진 건가요?',
+    '피부가 빨': '두드러기나 발진도 함께 있나요, 아니면 그냥 붉어진 건가요?',
+    '발진':      '두드러기나 발진도 함께 있나요, 아니면 그냥 붉어진 건가요?',
+}
+
 
 # ── 파이프라인 (라우터) ────────────────────────────────────────────────
 
@@ -189,9 +214,18 @@ class ChatPipeline:
         return "symptom"
 
     def chat(self, query: str) -> ChatResponse:
-        """질문 → intent 분류 → 전담 에이전트 → ChatResponse."""
+        """질문 → intent 분류 → 전담 에이전트 → ChatResponse (clarify 포함)."""
         intent = self.classify_intent(query)
-        return self.agents[intent].run(query, intent)
+        resp = self.agents[intent].run(query, intent)
+        resp.clarify_question = self._detect_clarify(query)
+        return resp
+
+    def _detect_clarify(self, query: str) -> str | None:
+        """VeNom 분산 증상 키워드 감지 → 되묻기 질문 반환."""
+        for keyword, question in _CLARIFY_QUESTIONS.items():
+            if keyword in query:
+                return question
+        return None
 
 
 # ── 팩토리 함수 ────────────────────────────────────────────────────────
