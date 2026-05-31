@@ -8993,6 +8993,7 @@ const NAV_ITEMS = [
   {id:"eda",     num:"03",ko:"EDA",           icon:"eda"},
   {id:"eval",    num:"04",ko:"모델 평가",     icon:"eval"},
   {id:"matching",num:"05",ko:"매칭 결과 뷰어",icon:"list"},
+  {id:"chat",    num:"06",ko:"AI 채팅",       icon:"bot"},
 ];
 const pageDesc = {
   search:"보호자가 입력한 증상으로 19,205개 Q&A 말뭉치에서 유사 사례를 검색합니다.",
@@ -9000,8 +9001,9 @@ const pageDesc = {
   eda:"생애주기·진료과·질병 차원의 분포와 길이 통계를 시각화합니다.",
   eval:"TF-IDF와 Sentence-BERT의 Hit@k, MAP@5 성능을 정량 비교합니다.",
   matching:"평가셋 50개 쿼리별로 각 모델이 반환한 top-5 문서를 탐색합니다.",
+  chat:"증상·처치·응급 질문을 입력하면 수의사 Q&A를 참고해 AI가 답변합니다.",
 };
-const pageEn = {search:"Search",data:"Data",eda:"Explore",eval:"Evaluation",matching:"Matches"};
+const pageEn = {search:"Search",data:"Data",eda:"Explore",eval:"Evaluation",matching:"Matches",chat:"AI Chat"};
 
 function ModelStatus() {
   const d = window.APP_DATA || {};
@@ -9024,6 +9026,182 @@ function ModelStatus() {
     </div>
   );
 }
+
+// ── AI 채팅 페이지 ─────────────────────────────────────────────────────────
+const INTENT_STYLE = {
+  symptom:   {label:"증상",  bg:"var(--accent-soft)",   color:"var(--accent)"},
+  treatment: {label:"처치",  bg:"oklch(0.96 0.04 75)",  color:"oklch(0.6 0.18 75)"},
+  emergency: {label:"응급",  bg:"oklch(0.97 0.04 25)",  color:"var(--danger)"},
+};
+
+function ChatBubble({msg}) {
+  const isUser = msg.role === "user";
+  if (isUser) return (
+    <div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
+      <div style={{maxWidth:"70%",background:"var(--accent)",color:"var(--accent-fg)",
+        borderRadius:"14px 14px 4px 14px",padding:"10px 14px",fontSize:14,lineHeight:1.6}}>
+        {msg.text}
+      </div>
+    </div>
+  );
+
+  const s = INTENT_STYLE[msg.intent] || INTENT_STYLE.symptom;
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:16}}>
+      <div style={{display:"flex",alignItems:"center",gap:6}}>
+        <div style={{width:26,height:26,borderRadius:8,background:"var(--accent-soft)",
+          display:"grid",placeItems:"center"}}>
+          <Icon name="bot" size={14}/>
+        </div>
+        <span style={{fontSize:11,fontWeight:600,color:"var(--text-subtle)",fontFamily:"var(--font-mono)",textTransform:"uppercase",letterSpacing:"0.06em"}}>AI 수의사</span>
+        <span style={{fontSize:11,padding:"2px 8px",borderRadius:20,background:s.bg,color:s.color,fontWeight:600,fontFamily:"var(--font-mono)"}}>{s.label}</span>
+      </div>
+      <div style={{maxWidth:"80%",marginLeft:32,background:"var(--bg-elev)",border:"1px solid var(--border)",
+        borderRadius:"4px 14px 14px 14px",padding:"10px 14px",fontSize:14,lineHeight:1.7,whiteSpace:"pre-wrap"}}>
+        {msg.text}
+      </div>
+      {msg.sources && msg.sources.length > 0 && (
+        <details style={{marginLeft:32,maxWidth:"80%"}}>
+          <summary style={{fontSize:11.5,color:"var(--text-subtle)",cursor:"pointer",fontFamily:"var(--font-mono)",userSelect:"none"}}>
+            참고 Q&A {msg.sources.length}건 보기
+          </summary>
+          <div style={{marginTop:6,display:"flex",flexDirection:"column",gap:6}}>
+            {msg.sources.map((s,i)=>(
+              <div key={i} style={{background:"var(--bg-soft)",border:"1px solid var(--border)",
+                borderRadius:8,padding:"8px 12px",fontSize:12.5}}>
+                <div style={{color:"var(--text-muted)",marginBottom:3}}>
+                  <span style={{fontFamily:"var(--font-mono)",color:"var(--text-subtle)",marginRight:6}}>Q</span>
+                  {s.input.length>80?s.input.slice(0,80)+"…":s.input}
+                </div>
+                <div style={{color:"var(--text)"}}>
+                  <span style={{fontFamily:"var(--font-mono)",color:"var(--accent)",marginRight:6}}>A</span>
+                  {s.output.length>100?s.output.slice(0,100)+"…":s.output}
+                </div>
+                <div style={{fontFamily:"var(--font-mono)",fontSize:11,color:"var(--text-subtle)",marginTop:2}}>
+                  유사도 {(s.score*100).toFixed(1)}%
+                </div>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
+
+function ChatPage() {
+  const [messages, setMessages] = React.useState([]);
+  const [input, setInput] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState(null);
+  const bottomRef = useRef(null);
+
+  const EXAMPLES = ["강아지가 밥을 안 먹어요","슬개골 탈구 수술 후 회복이 얼마나 걸려요","강아지가 초콜릿을 먹었어요","눈에서 눈물이 많이 나와요"];
+
+  useEffect2(()=>{ bottomRef.current?.scrollIntoView({behavior:"smooth"}); },[messages,loading]);
+
+  const send = async (q) => {
+    const query = (q || input).trim();
+    if (!query || loading) return;
+    setInput("");
+    setError(null);
+    setMessages(prev=>[...prev,{role:"user",text:query}]);
+    setLoading(true);
+    try {
+      // 상대경로 /chat — API 키는 서버에만 있고 브라우저에 절대 노출되지 않음
+      const res = await fetch("/chat",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({query}),
+      });
+      if (!res.ok) throw new Error(`서버 오류 (${res.status})`);
+      const data = await res.json();
+      setMessages(prev=>[...prev,{role:"ai",text:data.answer,intent:data.intent,sources:data.sources}]);
+    } catch(e) {
+      setError(e.message.includes("Failed to fetch")
+        ? "서버에 연결할 수 없어요. python run_api.py 를 실행한 뒤 다시 시도해 주세요."
+        : e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKey = (e) => { if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();} };
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",height:"100%",maxWidth:760,margin:"0 auto",gap:0}}>
+      {messages.length===0 && (
+        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:20,padding:"40px 0"}}>
+          <div style={{width:52,height:52,borderRadius:14,background:"var(--accent-soft)",display:"grid",placeItems:"center"}}>
+            <Icon name="bot" size={24}/>
+          </div>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontWeight:600,fontSize:17,marginBottom:6}}>AI 수의사 채팅</div>
+            <div style={{color:"var(--text-muted)",fontSize:13.5}}>증상·처치·응급 질문을 입력하면 수의사 Q&A 기반으로 답변합니다</div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,width:"100%",maxWidth:520}}>
+            {EXAMPLES.map(ex=>(
+              <button key={ex} onClick={()=>send(ex)} style={{
+                background:"var(--bg-elev)",border:"1px solid var(--border)",borderRadius:10,
+                padding:"10px 14px",fontSize:13,textAlign:"left",cursor:"pointer",color:"var(--text)",
+                transition:"border-color .15s",lineHeight:1.4,
+              }}
+              onMouseEnter={e=>e.currentTarget.style.borderColor="var(--accent)"}
+              onMouseLeave={e=>e.currentTarget.style.borderColor="var(--border)"}>
+                {ex}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {messages.length > 0 && (
+        <div style={{flex:1,overflowY:"auto",padding:"20px 0",display:"flex",flexDirection:"column"}}>
+          {messages.map((m,i)=><ChatBubble key={i} msg={m}/>)}
+          {loading && (
+            <div style={{display:"flex",alignItems:"center",gap:8,color:"var(--text-subtle)",fontSize:13}}>
+              <div style={{width:26,height:26,borderRadius:8,background:"var(--accent-soft)",display:"grid",placeItems:"center"}}>
+                <Icon name="bot" size={14}/>
+              </div>
+              <span style={{fontFamily:"var(--font-mono)"}}>답변 생성 중...</span>
+            </div>
+          )}
+          {error && (
+            <div style={{background:"oklch(0.97 0.04 25)",border:"1px solid oklch(0.9 0.08 25)",
+              borderRadius:10,padding:"10px 14px",fontSize:13,color:"var(--danger)"}}>
+              {error}
+            </div>
+          )}
+          <div ref={bottomRef}/>
+        </div>
+      )}
+
+      <div style={{borderTop:"1px solid var(--border)",paddingTop:14,paddingBottom:4}}>
+        <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+          <textarea value={input} onChange={e=>setInput(e.target.value)} onKeyDown={handleKey}
+            placeholder="질문을 입력하세요 (Enter로 전송)"
+            rows={2} style={{
+              flex:1,resize:"none",border:"1px solid var(--border)",borderRadius:10,
+              padding:"10px 12px",background:"var(--bg-elev)",color:"var(--text)",
+              fontSize:14,lineHeight:1.5,outline:"none",fontFamily:"var(--font-sans)",
+            }}
+            onFocus={e=>e.target.style.borderColor="var(--accent)"}
+            onBlur={e=>e.target.style.borderColor="var(--border)"}
+          />
+          <button onClick={()=>send()} disabled={!input.trim()||loading}
+            className="btn btn-primary" style={{height:44,padding:"0 18px",flexShrink:0}}>
+            <Icon name="arrow" size={14}/>
+            전송
+          </button>
+        </div>
+        <div style={{fontSize:11,color:"var(--text-subtle)",marginTop:6,fontFamily:"var(--font-mono)"}}>
+          ※ AI 답변은 참고용입니다. 정확한 진단은 수의사와 상담하세요.
+        </div>
+      </div>
+    </div>
+  );
+}
+// ── ChatPage 끝 ────────────────────────────────────────────────────────────
 
 function App() {
   const [page, setPage] = useState2(()=>localStorage.getItem("vet.page")||"search");
@@ -9093,6 +9271,7 @@ function App() {
           {page==="eda"      && <EdaPage/>}
           {page==="eval"     && <EvalPage/>}
           {page==="matching" && <MatchingPage/>}
+          {page==="chat"     && <ChatPage/>}
           </ThemeContext.Provider>
         </div>
       </main>
