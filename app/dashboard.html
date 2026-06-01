@@ -9330,7 +9330,7 @@ function DiscussionPage() {
   ];
   const limitations = [
     {t:"1. 환각율 측정의 한계", d:"LLM-as-judge가 RAG의 종합·재구성 답변을 '근거 없음'으로 오판. 표본을 12→150건으로 늘려도 환각율 역전(RAG 28% vs 단독 31.6%)이 유지됨 → 측정 지표 자체의 한계."},
-    {t:"2. 통계적 유의성 부족", d:"전체 2,399건 평가에서 McNemar 검정 p=0.46 → TF-IDF와 BERT의 차이는 통계적으로 유의하지 않음. BERT 우위는 구어체·희귀 증상에 국소적으로 발생."},
+    {t:"2. 전체 평균의 통계적 유의성", d:"수동 GT 50건·채팅 4방향 비교에서는 BERT가 우위지만, 전체 2,399건 평균에선 McNemar p=0.46으로 차이가 작음 → BERT 우위는 구어체·희귀 증상 등 의미적으로 어려운 질의에 집중되며, 전체 평균 유의성은 추가 검증이 필요."},
     {t:"3. 소표본 편향", d:"생애주기별 분석에서 자견 n=17 등 소표본 → '자견 BERT +17.6%p' 같은 결론이 불안정. 전체 데이터(n=808)에선 편향 완화 확인."},
     {t:"4. 코사인 유사도의 한계", d:"의미 유사도가 곧 정확성은 아님. 그럴듯하지만 사실과 다른 답변도 높은 코사인 점수를 받을 수 있음."},
     {t:"5. 평가 지표의 순환성", d:"BERT로 검색하고 BERT 임베딩으로 근거성을 측정 → 자기 모델에 유리할 여지. 관련성(질문↔답변)은 검색기와 독립적이라 부분 보완."},
@@ -9386,7 +9386,7 @@ function DiscussionPage() {
       </div>
       {/* Future Work */}
       <div style={card}>
-        <div style={h}>🔧 향후 과제 <span style={{fontSize:11,color:"var(--text-subtle)",fontFamily:"var(--font-mono)"}}>Future Work</span></div>
+        <div style={h}>🔧 향후 고도화 <span style={{fontSize:11,color:"var(--text-subtle)",fontFamily:"var(--font-mono)"}}>Future Work</span></div>
         <ol style={{margin:0,paddingLeft:20,display:"flex",flexDirection:"column",gap:6}}>
           {futureWork.map((f,i)=>(
             <li key={i} style={{fontSize:12.5,color:"var(--text-muted)",lineHeight:1.55}}>{f}</li>
