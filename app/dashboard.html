@@ -9034,6 +9034,91 @@ const INTENT_STYLE = {
   emergency: {label:"응급",  bg:"oklch(0.97 0.04 25)",  color:"var(--danger)"},
 };
 
+// ── 참고 Q&A 펼침 (공통) ──
+function SourcesDetails({sources}) {
+  if (!sources || sources.length===0) return null;
+  return (
+    <details style={{marginLeft:32,marginTop:8}}>
+      <summary style={{fontSize:11.5,color:"var(--text-subtle)",cursor:"pointer",fontFamily:"var(--font-mono)",userSelect:"none"}}>
+        📚 참고 수의사 Q&A {sources.length}건 — 모든 답변의 검색 근거
+      </summary>
+      <div style={{marginTop:6,display:"flex",flexDirection:"column",gap:6}}>
+        {sources.map((s,i)=>(
+          <div key={i} style={{background:"var(--bg-soft)",border:"1px solid var(--border)",borderRadius:8,padding:"8px 12px",fontSize:12.5}}>
+            <div style={{color:"var(--text-muted)",marginBottom:3}}>
+              <span style={{fontFamily:"var(--font-mono)",color:"var(--text-subtle)",marginRight:6}}>Q</span>
+              {s.input.length>80?s.input.slice(0,80)+"…":s.input}
+            </div>
+            <div style={{color:"var(--text)"}}>
+              <span style={{fontFamily:"var(--font-mono)",color:"var(--accent)",marginRight:6}}>A</span>
+              {s.output.length>120?s.output.slice(0,120)+"…":s.output}
+            </div>
+            <div style={{fontFamily:"var(--font-mono)",fontSize:11,color:"var(--text-subtle)",marginTop:2}}>유사도 {(s.score*100).toFixed(1)}%</div>
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+// ── 3방향 비교 버블 (A.Gemini 단독 / B.검색 원본 / C.RAG) ──
+function CompareBubble({msg}) {
+  const s = INTENT_STYLE[msg.intent] || INTENT_STYLE.symptom;
+  const m = msg.compare.metrics || {};
+  const cards = [
+    {key:"gemini_only",     label:"A. Gemini 단독", desc:"검색 없이 LLM만", text:msg.compare.gemini_only, accent:false},
+    {key:"tfidf_retrieval", label:"B. TF-IDF 검색", desc:"TF-IDF top-1 원본", text:msg.compare.tfidf_retrieval, accent:false},
+    {key:"bert_retrieval",  label:"C. BERT 검색",   desc:"BERT top-1 원본", text:msg.compare.bert_retrieval, accent:false},
+    {key:"rag",             label:"D. RAG (메인)",  desc:"BERT 검색 + 생성", text:msg.compare.rag, accent:true},
+  ];
+  const maxRel = Math.max(...cards.map(c=>(m[c.key]||{}).relevance||0));
+  const maxGrd = Math.max(...cards.map(c=>(m[c.key]||{}).grounded||0));
+  return (
+    <div style={{marginBottom:18}}>
+      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+        <div style={{width:26,height:26,borderRadius:8,background:"var(--accent-soft)",display:"grid",placeItems:"center"}}>
+          <Icon name="bot" size={14}/>
+        </div>
+        <span style={{fontSize:11,fontWeight:600,color:"var(--text-subtle)",fontFamily:"var(--font-mono)",textTransform:"uppercase",letterSpacing:"0.06em"}}>3방향 비교</span>
+        <span style={{fontSize:11,padding:"2px 8px",borderRadius:20,background:s.bg,color:s.color,fontWeight:600,fontFamily:"var(--font-mono)"}}>{s.label}</span>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginLeft:32}}>
+        {cards.map((c,i)=>(
+          <div key={i} style={{
+            border:"1px solid "+(c.accent?"var(--accent)":"var(--border)"),
+            borderRadius:10,padding:"10px 12px",
+            background:c.accent?"var(--accent-soft)":"var(--bg-elev)",
+            display:"flex",flexDirection:"column",gap:5}}>
+            <div style={{fontSize:11.5,fontWeight:700,color:c.accent?"var(--accent)":"var(--text)",fontFamily:"var(--font-mono)"}}>{c.label}</div>
+            <div style={{fontSize:10.5,color:"var(--text-subtle)"}}>{c.desc}</div>
+            <div style={{fontSize:13,lineHeight:1.6,color:"var(--text)",whiteSpace:"pre-wrap",borderTop:"1px solid var(--border)",paddingTop:6}}>{c.text}</div>
+            {m[c.key] && (
+              <div style={{borderTop:"1px solid var(--border)",paddingTop:6,marginTop:4,display:"flex",flexDirection:"column",gap:5}}>
+                {[
+                  {l:"관련성",v:m[c.key].relevance,best:m[c.key].relevance===maxRel,tip:"질문에 얼마나 맞나"},
+                  {l:"근거성",v:m[c.key].grounded,best:m[c.key].grounded===maxGrd,tip:"수의사 답변에 얼마나 가깝나"},
+                ].map((mt,j)=>(
+                  <div key={j} title={mt.tip} style={{display:"flex",alignItems:"center",gap:6,fontSize:10.5,fontFamily:"var(--font-mono)"}}>
+                    <span style={{color:"var(--text-subtle)",width:30,flexShrink:0}}>{mt.l}</span>
+                    <div style={{flex:1,height:5,background:"var(--bg-soft)",borderRadius:3,overflow:"hidden"}}>
+                      <div style={{width:(mt.v*100)+"%",height:"100%",background:mt.best?"var(--accent)":"var(--text-subtle)",opacity:mt.best?1:0.45}}/>
+                    </div>
+                    <span style={{color:mt.best?"var(--accent)":"var(--text-muted)",fontWeight:mt.best?700:400,width:30,textAlign:"right",flexShrink:0}}>{mt.v.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      <div style={{marginLeft:32,marginTop:6,fontSize:10.5,color:"var(--text-subtle)",fontFamily:"var(--font-mono)"}}>
+        ● 강조 = 세 답변 중 최고값 · 관련성=질문 적합도, 근거성=수의사 데이터 근접도
+      </div>
+      <SourcesDetails sources={msg.sources}/>
+    </div>
+  );
+}
+
 function ChatBubble({msg}) {
   const isUser = msg.role === "user";
   if (isUser) return (
@@ -9044,6 +9129,8 @@ function ChatBubble({msg}) {
       </div>
     </div>
   );
+
+  if (msg.compare) return <CompareBubble msg={msg}/>;
 
   const s = INTENT_STYLE[msg.intent] || INTENT_STYLE.symptom;
   return (
@@ -9102,6 +9189,7 @@ function ChatPage() {
   const [input, setInput] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState(null);
+  const [compareMode, setCompareMode] = React.useState(false);
   const bottomRef = useRef(null);
 
   const EXAMPLES = ["강아지가 밥을 안 먹어요","슬개골 탈구 수술 후 회복이 얼마나 걸려요","강아지가 초콜릿을 먹었어요","눈에서 눈물이 많이 나와요"];
@@ -9117,14 +9205,20 @@ function ChatPage() {
     setLoading(true);
     try {
       // 상대경로 /chat — API 키는 서버에만 있고 브라우저에 절대 노출되지 않음
-      const res = await fetch("/chat",{
+      const endpoint = compareMode ? "/chat/compare" : "/chat";
+      const res = await fetch(endpoint,{
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({query}),
       });
       if (!res.ok) throw new Error(`서버 오류 (${res.status})`);
       const data = await res.json();
-      setMessages(prev=>[...prev,{role:"ai",text:data.answer,intent:data.intent,sources:data.sources,clarify:data.clarify_question}]);
+      if (compareMode) {
+        setMessages(prev=>[...prev,{role:"ai",intent:data.intent,sources:data.sources,
+          compare:{gemini_only:data.gemini_only,tfidf_retrieval:data.tfidf_retrieval,bert_retrieval:data.bert_retrieval,rag:data.rag,metrics:data.metrics}}]);
+      } else {
+        setMessages(prev=>[...prev,{role:"ai",text:data.answer,intent:data.intent,sources:data.sources,clarify:data.clarify_question}]);
+      }
     } catch(e) {
       setError(e.message.includes("Failed to fetch")
         ? "서버에 연결할 수 없어요. python run_api.py 를 실행한 뒤 다시 시도해 주세요."
@@ -9185,6 +9279,20 @@ function ChatPage() {
       )}
 
       <div style={{borderTop:"1px solid var(--border)",paddingTop:14,paddingBottom:4}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+          <button onClick={()=>setCompareMode(v=>!v)} style={{
+            display:"flex",alignItems:"center",gap:6,padding:"5px 11px",borderRadius:20,
+            border:"1px solid "+(compareMode?"var(--accent)":"var(--border)"),
+            background:compareMode?"var(--accent-soft)":"var(--bg-elev)",
+            color:compareMode?"var(--accent)":"var(--text-muted)",
+            fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"var(--font-mono)"}}>
+            <span style={{width:7,height:7,borderRadius:"50%",background:compareMode?"var(--accent)":"var(--text-subtle)"}}/>
+            3방향 비교 {compareMode?"ON":"OFF"}
+          </button>
+          <span style={{fontSize:11,color:"var(--text-subtle)"}}>
+            {compareMode?"Gemini 단독 · 검색 원본 · RAG 세 답변을 나란히":"켜면 검색의 효과를 비교해서 보여줍니다"}
+          </span>
+        </div>
         <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
           <textarea value={input} onChange={e=>setInput(e.target.value)} onKeyDown={handleKey}
             placeholder="질문을 입력하세요 (Enter로 전송)"

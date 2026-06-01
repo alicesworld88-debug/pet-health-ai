@@ -3,12 +3,14 @@
 .env.local
 *.key
 
-# Data (AI Hub 라이선스)
-data/
-*.json
-*.csv
-*.pkl
-!data/.gitkeep
+# Data — 원천(AI Hub)·대용량 임베딩은 S3 배포 (재배포 라이선스 + GitHub 100MB 제한)
+#         그 외 분석 산출물(네이버 수집·모델·평가·figures·GT)은 저장소 포함
+data/processed/corpus_raw.csv
+data/processed/corpus_validated.csv
+data/processed/corpus_preprocessed.csv
+data/processed/embeddings/
+data/.DS_Store
+data/**/.DS_Store
 
 # Python
 __pycache__/

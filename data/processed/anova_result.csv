@@ -1,0 +1,2 @@
+﻿method,independent_var,dependent_var,N,k,df_between,df_within,F,p_value,significant
+One-way ANOVA,department,input_length,21604,5,4,21599,229.48,2.77e-193,True
