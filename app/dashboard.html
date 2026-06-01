@@ -8994,6 +8994,7 @@ const NAV_ITEMS = [
   {id:"eval",    num:"04",ko:"모델 평가",     icon:"eval"},
   {id:"matching",num:"05",ko:"매칭 결과 뷰어",icon:"list"},
   {id:"chat",    num:"06",ko:"AI 채팅",       icon:"bot"},
+  {id:"discussion",num:"07",ko:"논의 & 한계",  icon:"eval"},
 ];
 const pageDesc = {
   search:"보호자가 입력한 증상으로 19,205개 Q&A 말뭉치에서 유사 사례를 검색합니다.",
@@ -9002,8 +9003,9 @@ const pageDesc = {
   eval:"TF-IDF와 Sentence-BERT의 Hit@k, MAP@5 성능을 정량 비교합니다.",
   matching:"평가셋 50개 쿼리별로 각 모델이 반환한 top-5 문서를 탐색합니다.",
   chat:"증상·처치·응급 질문을 입력하면 수의사 Q&A를 참고해 AI가 답변합니다.",
+  discussion:"실험 결과 해석과 한계·오류 분석·향후 과제를 정리합니다.",
 };
-const pageEn = {search:"Search",data:"Data",eda:"Explore",eval:"Evaluation",matching:"Matches",chat:"AI Chat"};
+const pageEn = {search:"Search",data:"Data",eda:"Explore",eval:"Evaluation",matching:"Matches",chat:"AI Chat",discussion:"Discussion & Limitations"};
 
 function ModelStatus() {
   const d = window.APP_DATA || {};
@@ -9319,6 +9321,82 @@ function ChatPage() {
 }
 // ── ChatPage 끝 ────────────────────────────────────────────────────────────
 
+// ── 논의 & 한계 (Discussion & Limitations) ─────────────────────────────────
+function DiscussionPage() {
+  const results = [
+    {k:"RAG 근거성 우위", v:"단독 LLM 대비 ↑", d:"150건 평가: 근거성 0.796 vs 0.763 — 검색이 답변을 실제 수의학 지식에 근접시킴"},
+    {k:"BERT > TF-IDF", v:"의미 질의 우위", d:"구어체·희귀 증상에서 BERT 검색이 우위 (Hit@1 24% vs 18%)"},
+    {k:"채팅 4방향 비교", v:"라이브 실증", d:"Gemini단독·TF-IDF·BERT·RAG를 동일 질문에서 관련성·근거성으로 직접 대조"},
+  ];
+  const limitations = [
+    {t:"1. 환각율 측정의 한계", d:"LLM-as-judge가 RAG의 종합·재구성 답변을 '근거 없음'으로 오판. 표본을 12→150건으로 늘려도 환각율 역전(RAG 28% vs 단독 31.6%)이 유지됨 → 측정 지표 자체의 한계."},
+    {t:"2. 통계적 유의성 부족", d:"전체 2,399건 평가에서 McNemar 검정 p=0.46 → TF-IDF와 BERT의 차이는 통계적으로 유의하지 않음. BERT 우위는 구어체·희귀 증상에 국소적으로 발생."},
+    {t:"3. 소표본 편향", d:"생애주기별 분석에서 자견 n=17 등 소표본 → '자견 BERT +17.6%p' 같은 결론이 불안정. 전체 데이터(n=808)에선 편향 완화 확인."},
+    {t:"4. 코사인 유사도의 한계", d:"의미 유사도가 곧 정확성은 아님. 그럴듯하지만 사실과 다른 답변도 높은 코사인 점수를 받을 수 있음."},
+    {t:"5. 평가 지표의 순환성", d:"BERT로 검색하고 BERT 임베딩으로 근거성을 측정 → 자기 모델에 유리할 여지. 관련성(질문↔답변)은 검색기와 독립적이라 부분 보완."},
+    {t:"6. 정답(Ground Truth) 부재", d:"지식iN 질문에는 정답이 없어 절대 평가가 불가능하고 모델 간 상대 비교만 가능."},
+  ];
+  const errorCase = {
+    q:"췌장염 → 하반신 마비 인과 질문",
+    bad:"A. Gemini 단독: '하반신 마비까지 이어지는 경우는 흔치 않습니다' — 근거 불명, 모호",
+    good:"C. RAG: '췌장염 자체로 직접적인 하반신 마비를 일으키는 경우는 드물답니다' — 검색된 수의사 답변 근거로 잘못된 인과를 교정",
+  };
+  const futureWork = [
+    "환각 측정 고도화: 다수결 judge 또는 사람 라벨로 신뢰구간 확보",
+    "Ground Truth 구축: 지식iN ↔ AI Hub 의미 매칭으로 약지도 라벨 생성",
+    "데이터 보강: 커버리지 갭 영역(코퍼스 미매칭 질문)을 우선 수집",
+    "독립 평가 지표 도입: BERT 외 모델로 교차 검증해 순환성 해소",
+  ];
+  const card = {background:"var(--bg-elev)",border:"1px solid var(--border)",borderRadius:12,padding:"16px 18px",marginBottom:14};
+  const h = {fontSize:14,fontWeight:700,color:"var(--text)",margin:"0 0 10px",display:"flex",alignItems:"center",gap:8};
+  return (
+    <div style={{maxWidth:900,margin:"0 auto"}}>
+      {/* Results */}
+      <div style={card}>
+        <div style={h}>📊 결과 요약 <span style={{fontSize:11,color:"var(--text-subtle)",fontFamily:"var(--font-mono)"}}>Results</span></div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+          {results.map((r,i)=>(
+            <div key={i} style={{background:"var(--bg-soft)",borderRadius:8,padding:"10px 12px"}}>
+              <div style={{fontSize:12.5,fontWeight:700,color:"var(--accent)"}}>{r.k}</div>
+              <div style={{fontSize:11,color:"var(--text-subtle)",fontFamily:"var(--font-mono)",margin:"2px 0 6px"}}>{r.v}</div>
+              <div style={{fontSize:12,color:"var(--text-muted)",lineHeight:1.5}}>{r.d}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Limitations */}
+      <div style={card}>
+        <div style={h}>⚠️ 한계 <span style={{fontSize:11,color:"var(--text-subtle)",fontFamily:"var(--font-mono)"}}>Limitations</span></div>
+        <div style={{display:"flex",flexDirection:"column",gap:9}}>
+          {limitations.map((l,i)=>(
+            <div key={i} style={{borderLeft:"3px solid var(--border-strong)",paddingLeft:12}}>
+              <div style={{fontSize:13,fontWeight:600,color:"var(--text)"}}>{l.t}</div>
+              <div style={{fontSize:12.5,color:"var(--text-muted)",lineHeight:1.55,marginTop:2}}>{l.d}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Error Analysis */}
+      <div style={card}>
+        <div style={h}>🔬 오류 분석 <span style={{fontSize:11,color:"var(--text-subtle)",fontFamily:"var(--font-mono)"}}>Error Analysis</span></div>
+        <div style={{fontSize:12.5,color:"var(--text-muted)",marginBottom:8}}>환각율 지표가 RAG를 과소평가한 반면, 실제 답변 내용에서는 RAG가 잘못된 정보를 교정함:</div>
+        <div style={{fontSize:12.5,color:"var(--text-subtle)",marginBottom:6,fontFamily:"var(--font-mono)"}}>질문: {errorCase.q}</div>
+        <div style={{background:"oklch(0.97 0.04 25)",border:"1px solid oklch(0.9 0.08 25)",borderRadius:8,padding:"9px 12px",fontSize:12.5,color:"var(--danger)",marginBottom:6}}>{errorCase.bad}</div>
+        <div style={{background:"var(--accent-soft)",border:"1px solid var(--accent)",borderRadius:8,padding:"9px 12px",fontSize:12.5,color:"var(--accent)"}}>{errorCase.good}</div>
+      </div>
+      {/* Future Work */}
+      <div style={card}>
+        <div style={h}>🔧 향후 과제 <span style={{fontSize:11,color:"var(--text-subtle)",fontFamily:"var(--font-mono)"}}>Future Work</span></div>
+        <ol style={{margin:0,paddingLeft:20,display:"flex",flexDirection:"column",gap:6}}>
+          {futureWork.map((f,i)=>(
+            <li key={i} style={{fontSize:12.5,color:"var(--text-muted)",lineHeight:1.55}}>{f}</li>
+          ))}
+        </ol>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [page, setPage] = useState2(()=>localStorage.getItem("vet.page")||"search");
   const [theme, setTheme] = useState2(()=>localStorage.getItem("vet.theme")||"light");
@@ -9388,6 +9466,7 @@ function App() {
           {page==="eval"     && <EvalPage/>}
           {page==="matching" && <MatchingPage/>}
           {page==="chat"     && <ChatPage/>}
+          {page==="discussion" && <DiscussionPage/>}
           </ThemeContext.Provider>
         </div>
       </main>
