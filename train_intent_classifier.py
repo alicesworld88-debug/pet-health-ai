@@ -21,8 +21,11 @@ df = pd.read_csv(NAVER_DATA)
 print(f"총 {len(df):,}건 로드됨")
 print(df["intent"].value_counts())
 
-# 2. 결측치 제거
+# 2. 결측치 + 중복 제거 (데이터 품질 — 완전중복·query중복 제거)
 df = df.dropna(subset=["query", "intent"])
+_before = len(df)
+df = df.drop_duplicates(subset=["query"]).reset_index(drop=True)
+print(f"중복 제거: {_before:,} → {len(df):,} (-{_before-len(df):,})")
 X = df["query"].tolist()
 y = df["intent"].tolist()
 

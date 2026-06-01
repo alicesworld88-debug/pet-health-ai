@@ -33,10 +33,15 @@ def main():
     corpus_df = pd.read_csv(CORPUS)
     print(f"  코퍼스 {corpus_emb.shape[0]:,}건 × {corpus_emb.shape[1]}차원")
 
-    # 2. 지식iN 질문 로드
+    # 2. 지식iN 질문 로드 (대표성 있는 2만 건 무작위 샘플 — CPU 인코딩 시간 단축)
     df = pd.read_csv(NAVER).dropna(subset=["query", "intent"]).reset_index(drop=True)
+    _total = len(df)
+    SAMPLE_N = 80000
+    if _total > SAMPLE_N:
+        df = df.sample(n=SAMPLE_N, random_state=42).reset_index(drop=True)
+        print(f"{SAMPLE_N:,}건 무작위 샘플링 (전체 {_total:,}건 중, seed=42)")
     queries = df["query"].tolist()
-    print(f"지식iN 질문 {len(queries):,}건 인코딩 중... (수 분 소요)")
+    print(f"지식iN 질문 {len(queries):,}건 인코딩 중...")
 
     # 3. 질문 임베딩 (배치)
     model = SentenceTransformer("jhgan/ko-sroberta-multitask")

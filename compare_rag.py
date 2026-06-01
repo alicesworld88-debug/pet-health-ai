@@ -36,9 +36,10 @@ _MODEL   = os.getenv("VERTEX_MODEL", "gemini-2.5-flash-lite")
 
 NAVER_DATA   = Path("data/external/naver_questions.csv")
 OUT_MD       = Path("docs/rag_comparison.md")
-N_PER_INTENT = 50         # intent별 샘플 질문 수 (총 150)
+N_PER_INTENT = 200        # intent별 샘플 질문 수 (총 600)
 POOL_K       = 20         # 근거성 측정용 참고풀 크기
 SEED         = 42
+USE_JUDGE    = False      # 대규모 표본 시 환각 judge 생략 (관련성·근거성만, 속도↑)
 
 _SOLO_PROMPT = """당신은 반려견 건강 상담 AI입니다.
 보호자 질문에 답하세요.
@@ -162,8 +163,11 @@ def main():
 
         per_q = {}
         for method, (ans, rel, grd) in recs.items():
-            total, unsup = judge_hallucination(ans, refs5)
-            rate = (unsup / total) if total else 0.0
+            if USE_JUDGE:
+                total, unsup = judge_hallucination(ans, refs5)
+                rate = (unsup / total) if total else 0.0
+            else:
+                rate = 0.0
             rows.append({"intent": intent, "method": method,
                          "relevance": rel, "grounded": grd,
                          "halluc_rate": rate, "length": len(ans)})
