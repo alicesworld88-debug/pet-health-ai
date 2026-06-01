@@ -1,0 +1,1 @@
+{"version":"2.0","routeKey":"ANY /bert/{proxy+}","rawPath":"/bert/chat","rawQueryString":"","headers":{"content-type":"application/json"},"requestContext":{"stage":"$default","domainName":"local.invoke","http":{"method":"POST","path":"/bert/chat","protocol":"HTTP/1.1","sourceIp":"127.0.0.1","userAgent":"warmup"}},"body":"{\"query\": \"강아지가 절뚝거려요\"}","isBase64Encoded":false}

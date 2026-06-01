@@ -1,0 +1,20 @@
+version = 0.1
+
+[default.global.parameters]
+stack_name = "pet-health-ai"
+
+[default.build.parameters]
+# 이미지 빌드(docker)라 휠 호환은 베이스 이미지가 보장. 빌드 캐시만 활용.
+cached = true
+parallel = true
+
+[default.deploy.parameters]
+region = "ap-northeast-2"
+resolve_s3 = true
+resolve_image_repos = true
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+fail_on_empty_changeset = false
+
+[default.sync.parameters]
+watch = false

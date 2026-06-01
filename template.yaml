@@ -1,0 +1,119 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  pet-health-ai — 반려동물 증상 매칭 RAG 챗봇.
+  TfidfFunction / BertFunction 두 함수가 단일 컨테이너 이미지를 공유하고,
+  RETRIEVER_TYPE env로만 분기. 단일 HTTP API에서 경로 프리픽스(/tfidf, /bert) 라우팅.
+
+Parameters:
+  S3BucketName:
+    Type: String
+    Default: alices-project-storage
+    Description: 데이터(corpus/intent/embeddings) S3 버킷
+  VertexApiKeyParam:
+    Type: String
+    Default: /pet-health-ai/VERTEX_API_KEY
+    Description: Vertex API 키가 저장된 SSM SecureString 경로
+  VertexModel:
+    Type: String
+    Default: gemini-2.5-flash-lite
+
+Globals:
+  Function:
+    # 주의: PackageType은 Globals 미지원 속성 → 각 함수에 명시
+    Timeout: 29              # API Gateway HTTP API 통합 한도(30s) 밑으로
+    MemorySize: 1024
+    Environment:
+      Variables:
+        DATA_SOURCE: s3
+        S3_BUCKET_NAME: !Ref S3BucketName
+        VERTEX_MODEL: !Ref VertexModel
+        VERTEX_API_KEY_PARAM: !Ref VertexApiKeyParam
+
+Resources:
+
+  PetHealthApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: $default
+      # CORS는 FastAPI CORSMiddleware(app/api.py) 한 곳에서만 처리한다.
+      # API Gateway에도 CorsConfiguration을 두면 Access-Control-Allow-Origin이
+      # 중복으로 붙어 브라우저가 CORS 위반으로 차단함 (Mangum+HTTP API 함정).
+      # 비용/남용 방지용 기본 쓰로틀 (데모 기준 — 필요시 상향)
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 10
+        ThrottlingRateLimit: 5
+
+  # ── TF-IDF 함수 (공유 이미지, torch는 lazy import라 미로드) ──
+  TfidfFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: pet-health-tfidf
+      PackageType: Image
+      MemorySize: 1024
+      Environment:
+        Variables:
+          RETRIEVER_TYPE: tfidf
+          API_BASE_PATH: /tfidf
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: s3:GetObject
+              Resource: !Sub arn:aws:s3:::${S3BucketName}/pet-health-ai/data/processed/*
+            - Effect: Allow
+              Action: ssm:GetParameter
+              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${VertexApiKeyParam}
+      Events:
+        Proxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PetHealthApi
+            Path: /tfidf/{proxy+}
+            Method: ANY
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: .
+      DockerTag: pet-health-serving
+
+  # ── BERT 함수 (동일 이미지, torch 로드) ──
+  BertFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: pet-health-bert
+      PackageType: Image
+      MemorySize: 3008          # 계정 상한(3008) — torch 모델 로드 가속
+      Timeout: 90               # API GW(30s)보다 길게 → 첫 요청이 끊겨도 Lambda는 끝까지
+                                #   파이프라인+모델 로드·캐싱 → 컨테이너 워밍(콜드스타트 악순환 차단)
+      Environment:
+        Variables:
+          RETRIEVER_TYPE: bert
+          API_BASE_PATH: /bert
+          GEMINI_TIMEOUT: "15"  # 모델 로드 시간 감안해 Gemini 여유 축소
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: s3:GetObject
+              Resource: !Sub arn:aws:s3:::${S3BucketName}/pet-health-ai/data/processed/*
+            - Effect: Allow
+              Action: ssm:GetParameter
+              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${VertexApiKeyParam}
+      Events:
+        Proxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PetHealthApi
+            Path: /bert/{proxy+}
+            Method: ANY
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: .
+      DockerTag: pet-health-serving
+
+Outputs:
+  ApiBaseUrl:
+    Description: HTTP API 기본 URL (대시보드 API_BASE = 이 값 + /tfidf 또는 /bert)
+    Value: !Sub https://${PetHealthApi}.execute-api.${AWS::Region}.amazonaws.com
+  TfidfChatUrl:
+    Value: !Sub https://${PetHealthApi}.execute-api.${AWS::Region}.amazonaws.com/tfidf/chat
+  BertChatUrl:
+    Value: !Sub https://${PetHealthApi}.execute-api.${AWS::Region}.amazonaws.com/bert/chat

@@ -1,0 +1,18 @@
+{
+  "version": "2.0",
+  "routeKey": "ANY /tfidf/{proxy+}",
+  "rawPath": "/tfidf/chat",
+  "rawQueryString": "",
+  "headers": {
+    "content-type": "application/json"
+  },
+  "requestContext": {
+    "http": {
+      "method": "POST",
+      "path": "/tfidf/chat",
+      "protocol": "HTTP/1.1"
+    }
+  },
+  "body": "{\"query\": \"강아지가 토했어요\"}",
+  "isBase64Encoded": false
+}
