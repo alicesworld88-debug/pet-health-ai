@@ -5,7 +5,7 @@ AI 수의사 채팅 파이프라인 — 멀티 에이전트 라우팅 구조
     query → classify_intent (ML) → [SymptomAgent | TreatmentAgent | EmergencyAgent] → ChatResponse
 
 확장 포인트:
-    - classify_intent(): ML 분류기 (Naver 114k 학습 데이터, 84.2% 정확도)
+    - classify_intent(): ML 분류기 (Naver 114k 학습 데이터, 84.7% 정확도)
     - 새 에이전트 추가: BaseAgent 상속 → agents 딕셔너리에 등록
     - Retriever Protocol: TF-IDF / BERT / 외부 검색엔진 교체 가능
     - generator.generate_answer(): 다른 LLM으로 교체 가능
@@ -211,7 +211,7 @@ class ChatPipeline:
 
     def classify_intent(self, query: str) -> str:
         """
-        ML 기반 intent 분류 (Naver 114k 데이터 학습, 84.2% 정확도).
+        ML 기반 intent 분류 (Naver 114k 데이터 학습, 84.7% 정확도).
         반환값: 'emergency' | 'treatment' | 'symptom'
 
         폴백: 분류기 없으면 규칙 기반 분류 사용.

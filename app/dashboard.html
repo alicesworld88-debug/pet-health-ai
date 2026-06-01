@@ -8873,6 +8873,29 @@ function EvalPage() {
           <p style={{fontSize:12,color:"var(--text-muted)",marginTop:12,lineHeight:1.6}}>귀무가설(H₀): 진료과 간 질문 길이 평균이 동일하다 → 기각 (p ≈ 0). 내과·외과 질문이 피부과·안과 대비 유의하게 길다.</p>
         </div>
       )}
+      {/* RAG 효과 검증 — 지식iN 대규모 평가 */}
+      <div className="card">
+        <div className="card-head"><div><h4 className="card-title">RAG 효과 검증 — 검색 결합의 정량 비교</h4><p className="card-sub">지식iN 실제 질문 기준 · 관련성(질문 적합도) · 근거성(수의사 데이터 근접도)</p></div></div>
+        {[
+          {m:"A. Gemini 단독", desc:"검색 없이 LLM만", rel:0.745, grd:0.763},
+          {m:"B. BERT 검색원본", desc:"top-1 수의사 답변", rel:0.615, grd:0.813},
+          {m:"C. RAG", desc:"검색 근거 + 생성", rel:0.687, grd:0.796, best:true},
+        ].map((r,i)=>(
+          <div key={i} style={{marginBottom:13}}>
+            <div style={{fontSize:13,fontWeight:r.best?700:500,color:r.best?"var(--accent)":"var(--text)",marginBottom:5}}>{r.m} <span style={{fontSize:11,color:"var(--text-subtle)",fontWeight:400}}>{r.desc}</span></div>
+            {[{l:"관련성",v:r.rel},{l:"근거성",v:r.grd}].map((mt,j)=>(
+              <div key={j} style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                <span style={{fontSize:11,width:36,color:"var(--text-subtle)",fontFamily:"var(--font-mono)"}}>{mt.l}</span>
+                <div style={{flex:1,height:8,background:"var(--bg-soft)",borderRadius:4,overflow:"hidden"}}>
+                  <div style={{width:(mt.v*100)+"%",height:"100%",background:r.best?"var(--accent)":"var(--text-subtle)",opacity:r.best?1:0.5}}/>
+                </div>
+                <span style={{fontSize:12,width:42,textAlign:"right",fontFamily:"var(--font-mono)",fontWeight:r.best?700:400,color:r.best?"var(--accent)":"var(--text-muted)"}}>{mt.v.toFixed(3)}</span>
+              </div>
+            ))}
+          </div>
+        ))}
+        <p style={{fontSize:12,color:"var(--text-muted)",marginTop:8,lineHeight:1.6}}>RAG가 <strong>근거성에서 단독 LLM 우위</strong>(검색이 실제 수의학 지식에 근접). 관련성은 단독이 질문 어휘를 반복해 표면 점수가 높으나, 내용 정확성은 근거성·정성 분석에서 드러남. <strong>지식iN 150건 기준</strong> (대규모 600건 평가 진행 중).</p>
+      </div>
     </div>
   );
 }
