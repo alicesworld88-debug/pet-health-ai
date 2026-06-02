@@ -9304,12 +9304,33 @@ const lifeMap = { puppy:"자견", adult:"성견", senior:"노령견" };
 
 function MatchingPage() {
   const d = window.APP_DATA;
+  const [sub, setSub] = React.useState("GT 50건 (수동)");
   const [lifeFilter, setLifeFilter] = React.useState("all");
   const [viewMode, setViewMode] = React.useState("both");
   const [openId, setOpenId] = React.useState("Q006");
   const filtered = d.evalQueries.filter(q=>lifeFilter==="all"||lifeMap[lifeFilter]===q.life);
+  const fullLifeBars = {
+    data:[
+      {type:"bar", name:"TF-IDF", x:["자견","성견","노령견"], y:[25.4,24.6,21.4], marker:{color:C.tfidf}},
+      {type:"bar", name:"BERT", x:["자견","성견","노령견"], y:[23.7,26.4,24.0], marker:{color:C.bert}},
+    ],
+    layout:{barmode:"group", yaxis:{title:"Hit@1 (%)",range:[0,35]}, margin:{t:30,l:50,r:20,b:36}, height:280, legend:{orientation:"h",y:1.18,x:0.5,xanchor:"center"}}
+  };
+  const fullDeptBars = {
+    data:[
+      {type:"bar", name:"TF-IDF", x:["내과","외과","피부과","치과","안과"], y:[24.8,23.0,24.9,23.3,15.7], marker:{color:C.tfidf}},
+      {type:"bar", name:"BERT", x:["내과","외과","피부과","치과","안과"], y:[26.0,20.7,26.9,21.7,30.4], marker:{color:C.bert}},
+    ],
+    layout:{barmode:"group", yaxis:{title:"Hit@1 (%)",range:[0,35]}, margin:{t:30,l:50,r:20,b:36}, height:280, legend:{orientation:"h",y:1.18,x:0.5,xanchor:"center"}}
+  };
   return (
     <div className="vstack" style={{gap:14}}>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+        {["GT 50건 (수동)","전체 2,399건 (자동)"].map(s=>(
+          <button key={s} onClick={()=>setSub(s)} style={{padding:"8px 16px",borderRadius:9,fontSize:13,cursor:"pointer",border:"1px solid "+(sub===s?"var(--accent)":"var(--border)"),background:sub===s?"var(--accent-soft)":"var(--bg-elev)",color:sub===s?"var(--accent)":"var(--text-muted)",fontWeight:sub===s?600:400,transition:"all .15s"}}>{s}</button>
+        ))}
+      </div>
+      {sub==="GT 50건 (수동)" && (<>
       <div className="filter-bar">
         <div className="filter-group">
           <span className="g-label">생애주기</span>
@@ -9333,6 +9354,32 @@ function MatchingPage() {
       {filtered.map(q=>(
         <EvalQueryRow key={q.id} q={q} isOpen={openId===q.id} onToggle={()=>setOpenId(openId===q.id?null:q.id)} viewMode={viewMode}/>
       ))}
+      </>)}
+      {sub==="전체 2,399건 (자동)" && (<>
+      <div className="callout">
+        <span className="ico"><Icon name="trending" size={16}/></span>
+        <div>
+          <div className="t">전체 검증셋 2,399건 자동 평가 — 안과에서 BERT 압도적</div>
+          <div className="d">수동 GT 50건과 달리 전체 검증셋(자견 782·성견 808·노령견 809)의 자동 Hit@1. 전체 TF-IDF 23.8% / BERT 24.7%. 특히 <strong>안과에서 BERT 30.4% vs TF-IDF 15.7%</strong>로 의미 검색 우위가 뚜렷.</div>
+        </div>
+      </div>
+      <div className="metric-grid">
+        <div className="metric"><div className="label">전체 쿼리</div><div className="value">2,399</div><div className="foot">자동 평가</div></div>
+        <div className="metric"><div className="label">TF-IDF Hit@1</div><div className="value">23.8%</div><div className="foot">키워드 검색</div></div>
+        <div className="metric"><div className="label" style={{color:C.bert}}>BERT Hit@1 ★</div><div className="value" style={{color:C.bert}}>24.7%</div><div className="foot">의미 검색</div></div>
+        <div className="metric"><div className="label">안과 BERT 우위</div><div className="value">+14.7%p</div><div className="foot">30.4 vs 15.7</div></div>
+      </div>
+      <div className="section-row">
+        <div className="card">
+          <div className="card-head"><div><h4 className="card-title">생애주기별 Hit@1 (2,399건)</h4><p className="card-sub">노령견에서 BERT 우위(24.0 vs 21.4)</p></div></div>
+          <PlotlyChart fig={fullLifeBars} height={280}/>
+        </div>
+        <div className="card">
+          <div className="card-head"><div><h4 className="card-title">진료과별 Hit@1 (2,399건)</h4><p className="card-sub">안과·피부과·내과 BERT 우위 · 외과·치과 TF-IDF</p></div></div>
+          <PlotlyChart fig={fullDeptBars} height={280}/>
+        </div>
+      </div>
+      </>)}
     </div>
   );
 }
@@ -9424,7 +9471,7 @@ const pageDesc = {
   data:"AI Hub 코퍼스·네이버 지식iN·VeNom 3개 데이터 소스의 규모와 분포를 요약합니다.",
   eda:"AI Hub(생애주기·진료과·질병)와 네이버 지식iN(유사도·키워드·교차 분석)의 탐색 분석을 시각화합니다.",
   eval:"검색 모델(TF-IDF·BERT)의 Hit@k·MAP@5와 답변 비교 (4방향)(Gemini단독·검색·RAG)의 관련성·근거성을 정량 비교합니다.",
-  matching:"평가셋 50개 쿼리별로 각 모델이 반환한 top-5 문서를 탐색합니다.",
+  matching:"수동 GT 50건(쿼리별 top-5 검색)과 전체 자동 2,399건(hit율 요약)을 서브탭으로 탐색합니다.",
   chat:"증상·처치·응급 질문을 입력하면 수의사 Q&A를 참고해 AI가 답변합니다.",
   discussion:"실험 결과 해석과 한계·오류 분석·향후 과제를 정리합니다.",
 };
@@ -9446,8 +9493,10 @@ function ModelStatus() {
   );
   return (
     <div style={{display:"flex",gap:6}}>
-      <StatusPill ok={bertOk}  label="BERT"/>
       <StatusPill ok={tfidfOk} label="TF-IDF"/>
+      <StatusPill ok={bertOk}  label="BERT"/>
+      <StatusPill ok={true}    label="Gemini"/>
+      <StatusPill ok={bertOk}  label="RAG"/>
     </div>
   );
 }
@@ -9491,10 +9540,10 @@ function CompareBubble({msg}) {
   const s = INTENT_STYLE[msg.intent] || INTENT_STYLE.symptom;
   const m = msg.compare.metrics || {};
   const cards = [
-    {key:"gemini_only",     label:"A. Gemini 단독", desc:"검색 없이 LLM만", text:msg.compare.gemini_only, accent:false},
-    {key:"tfidf_retrieval", label:"B. TF-IDF 검색", desc:"TF-IDF top-1 원본", text:msg.compare.tfidf_retrieval, accent:false},
-    {key:"bert_retrieval",  label:"C. BERT 검색",   desc:"BERT top-1 원본", text:msg.compare.bert_retrieval, accent:false},
-    {key:"rag",             label:"D. RAG (메인)",  desc:"BERT 검색 + 생성", text:msg.compare.rag, accent:true},
+    {key:"gemini_only",     label:"A. Gemini 단독", desc:"검색 없이 LLM만",   text:msg.compare.gemini_only,     color:C.dept[3], accent:false},
+    {key:"tfidf_retrieval", label:"B. TF-IDF 검색", desc:"TF-IDF top-1 원본", text:msg.compare.tfidf_retrieval, color:C.lcPuppy, accent:false},
+    {key:"bert_retrieval",  label:"C. BERT 검색",   desc:"BERT top-1 원본",   text:msg.compare.bert_retrieval,  color:C.tfidf,   accent:false},
+    {key:"rag",             label:"D. RAG (메인)",  desc:"BERT 검색 + 생성",  text:msg.compare.rag,             color:C.bert,    accent:true},
   ];
   const maxRel = Math.max(...cards.map(c=>(m[c.key]||{}).relevance||0));
   const maxGrd = Math.max(...cards.map(c=>(m[c.key]||{}).grounded||0));
@@ -9510,34 +9559,40 @@ function CompareBubble({msg}) {
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginLeft:32}}>
         {cards.map((c,i)=>(
           <div key={i} style={{
-            border:"1px solid "+(c.accent?"var(--accent)":"var(--border)"),
-            borderRadius:10,padding:"10px 12px",
+            border:"1px solid "+(c.accent?c.color:"var(--border)"),
+            borderRadius:10,overflow:"hidden",
             background:c.accent?"var(--accent-soft)":"var(--bg-elev)",
-            display:"flex",flexDirection:"column",gap:5}}>
-            <div style={{fontSize:11.5,fontWeight:700,color:c.accent?"var(--accent)":"var(--text)",fontFamily:"var(--font-mono)"}}>{c.label}</div>
-            <div style={{fontSize:10.5,color:"var(--text-subtle)"}}>{c.desc}</div>
-            <div style={{fontSize:13,lineHeight:1.6,color:"var(--text)",whiteSpace:"pre-wrap",borderTop:"1px solid var(--border)",paddingTop:6}}>{c.text}</div>
-            {m[c.key] && (
-              <div style={{borderTop:"1px solid var(--border)",paddingTop:6,marginTop:4,display:"flex",flexDirection:"column",gap:5}}>
-                {[
-                  {l:"관련성",v:m[c.key].relevance,best:m[c.key].relevance===maxRel,tip:"질문에 얼마나 맞나"},
-                  {l:"근거성",v:m[c.key].grounded,best:m[c.key].grounded===maxGrd,tip:"수의사 답변에 얼마나 가깝나"},
-                ].map((mt,j)=>(
-                  <div key={j} title={mt.tip} style={{display:"flex",alignItems:"center",gap:6,fontSize:10.5,fontFamily:"var(--font-mono)"}}>
-                    <span style={{color:"var(--text-subtle)",width:30,flexShrink:0}}>{mt.l}</span>
-                    <div style={{flex:1,height:5,background:"var(--bg-soft)",borderRadius:3,overflow:"hidden"}}>
-                      <div style={{width:(mt.v*100)+"%",height:"100%",background:mt.best?"var(--accent)":"var(--text-subtle)",opacity:mt.best?1:0.45}}/>
-                    </div>
-                    <span style={{color:mt.best?"var(--accent)":"var(--text-muted)",fontWeight:mt.best?700:400,width:30,textAlign:"right",flexShrink:0}}>{mt.v.toFixed(2)}</span>
-                  </div>
-                ))}
+            display:"flex",flexDirection:"column"}}>
+            <div style={{height:3,background:c.color}}/>
+            <div style={{padding:"9px 12px",display:"flex",flexDirection:"column",gap:5,flex:1}}>
+              <div style={{display:"flex",alignItems:"center",gap:5}}>
+                <span style={{width:8,height:8,borderRadius:"50%",background:c.color,flexShrink:0}}/>
+                <span style={{fontSize:11.5,fontWeight:700,color:c.color,fontFamily:"var(--font-mono)"}}>{c.label}</span>
               </div>
-            )}
+              <div style={{fontSize:10.5,color:"var(--text-subtle)"}}>{c.desc}</div>
+              <div style={{fontSize:13,lineHeight:1.6,color:"var(--text)",whiteSpace:"pre-wrap",borderTop:"1px solid var(--border)",paddingTop:6}}>{c.text}</div>
+              {m[c.key] && (
+                <div style={{borderTop:"1px solid var(--border)",paddingTop:6,marginTop:4,display:"flex",flexDirection:"column",gap:6}}>
+                  {[
+                    {l:"관련성",v:m[c.key].relevance,best:m[c.key].relevance===maxRel,tip:"질문에 얼마나 맞나"},
+                    {l:"근거성",v:m[c.key].grounded,best:m[c.key].grounded===maxGrd,tip:"수의사 답변에 얼마나 가깝나"},
+                  ].map((mt,j)=>(
+                    <div key={j} title={mt.tip} style={{display:"flex",alignItems:"center",gap:6,fontSize:10.5,fontFamily:"var(--font-mono)"}}>
+                      <span style={{color:"var(--text-subtle)",width:30,flexShrink:0}}>{mt.l}</span>
+                      <div style={{flex:1,height:6,background:"var(--bg-soft)",borderRadius:3,overflow:"hidden"}}>
+                        <div style={{width:(mt.v*100)+"%",height:"100%",background:c.color,opacity:mt.best?1:0.5,borderRadius:3}}/>
+                      </div>
+                      <span style={{color:mt.best?c.color:"var(--text-muted)",fontWeight:mt.best?700:400,width:30,textAlign:"right",flexShrink:0}}>{mt.v.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         ))}
       </div>
       <div style={{marginLeft:32,marginTop:6,fontSize:10.5,color:"var(--text-subtle)",fontFamily:"var(--font-mono)"}}>
-        ● 강조 = 세 답변 중 최고값 · 관련성=질문 적합도, 근거성=수의사 데이터 근접도
+        ● 강조 = 네 답변 중 최고값 · 관련성=질문 적합도, 근거성=수의사 데이터 근접도
       </div>
       <SourcesDetails sources={msg.sources}/>
     </div>
@@ -9716,7 +9771,7 @@ function ChatPage() {
             4방향 비교 {compareMode?"ON":"OFF"}
           </button>
           <span style={{fontSize:11,color:"var(--text-subtle)"}}>
-            {compareMode?"Gemini 단독 · 검색 원본 · RAG 세 답변을 나란히":"켜면 검색의 효과를 비교해서 보여줍니다"}
+            {compareMode?"Gemini 단독 · TF-IDF/BERT 검색 · RAG 네 답변을 나란히":"켜면 4방향으로 비교해서 보여줍니다"}
           </span>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
