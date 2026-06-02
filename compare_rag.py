@@ -36,7 +36,7 @@ _MODEL   = os.getenv("VERTEX_MODEL", "gemini-2.5-flash-lite")
 
 NAVER_DATA   = Path("data/external/naver_questions.csv")
 OUT_MD       = Path("docs/rag_comparison.md")
-N_PER_INTENT = 200        # intent별 샘플 질문 수 (총 600)
+N_PER_INTENT = 100        # intent별 샘플 질문 수 (총 300)
 POOL_K       = 20         # 근거성 측정용 참고풀 크기
 SEED         = 42
 USE_JUDGE    = False      # 대규모 표본 시 환각 judge 생략 (관련성·근거성만, 속도↑)

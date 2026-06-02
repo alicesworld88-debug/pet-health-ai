@@ -8139,6 +8139,25 @@ function DataPage() {
           </table>
         </div>
       </div>
+      <div className="card">
+        <div className="card-head"><div><h4 className="card-title">지식iN 커버리지 — 우리 코퍼스가 실제 질문을 얼마나 다루나</h4><p className="card-sub">네이버 지식iN 보호자 질문 8만 건 × 수의사 코퍼스 검색 (top-1 유사도)</p></div></div>
+        <div style={{display:"flex",height:30,borderRadius:6,overflow:"hidden",marginBottom:10}}>
+          <div style={{width:"92.6%",background:"var(--accent)",display:"grid",placeItems:"center",fontSize:12,color:"#fff",fontWeight:700}}>92.6%</div>
+          <div style={{width:"7.0%",background:"oklch(0.72 0.13 75)"}}/>
+          <div style={{width:"0.4%",background:"var(--danger)"}}/>
+        </div>
+        <div style={{display:"flex",gap:18,fontSize:12.5,marginBottom:16}}>
+          <span><b style={{color:"var(--accent)"}}>92.6%</b> 잘 커버 (≥0.7)</span>
+          <span><b style={{color:"oklch(0.6 0.15 75)"}}>7.0%</b> 부분 (0.5~0.7)</span>
+          <span><b style={{color:"var(--danger)"}}>0.4%</b> 갭 (&lt;0.5)</span>
+        </div>
+        <div className="metric-grid" style={{gridTemplateColumns:"repeat(3,1fr)"}}>
+          {[{i:"증상 symptom",v:"95.2%"},{i:"처치 treatment",v:"93.3%"},{i:"응급 emergency",v:"86.3%"}].map((x,j)=>(
+            <div key={j} className="metric"><div className="label">{x.i} 커버율</div><div className="value" style={{fontSize:22}}>{x.v}</div><div className="foot">유사도 ≥ 0.70</div></div>
+          ))}
+        </div>
+        <p style={{fontSize:12,color:"var(--text-muted)",marginTop:12,lineHeight:1.6}}>실제 보호자 질문의 <strong>92.6%</strong>를 수의사 코퍼스(21,604건)로 답변 가능하며, 코퍼스에 유사 사례가 없는 갭은 <strong>0.4%</strong>뿐. 평균 유사도 0.783 · 중앙값 0.794. (지식iN 8만 건 무작위 샘플, seed=42)</p>
+      </div>
     </div>
   );
 }
@@ -8877,9 +8896,9 @@ function EvalPage() {
       <div className="card">
         <div className="card-head"><div><h4 className="card-title">RAG 효과 검증 — 검색 결합의 정량 비교</h4><p className="card-sub">지식iN 실제 질문 기준 · 관련성(질문 적합도) · 근거성(수의사 데이터 근접도)</p></div></div>
         {[
-          {m:"A. Gemini 단독", desc:"검색 없이 LLM만", rel:0.745, grd:0.763},
-          {m:"B. BERT 검색원본", desc:"top-1 수의사 답변", rel:0.615, grd:0.813},
-          {m:"C. RAG", desc:"검색 근거 + 생성", rel:0.687, grd:0.796, best:true},
+          {m:"A. Gemini 단독", desc:"검색 없이 LLM만", rel:0.759, grd:0.769},
+          {m:"B. BERT 검색원본", desc:"top-1 수의사 답변", rel:0.619, grd:0.810},
+          {m:"C. RAG", desc:"검색 근거 + 생성", rel:0.682, grd:0.799, best:true},
         ].map((r,i)=>(
           <div key={i} style={{marginBottom:13}}>
             <div style={{fontSize:13,fontWeight:r.best?700:500,color:r.best?"var(--accent)":"var(--text)",marginBottom:5}}>{r.m} <span style={{fontSize:11,color:"var(--text-subtle)",fontWeight:400}}>{r.desc}</span></div>
@@ -8894,7 +8913,7 @@ function EvalPage() {
             ))}
           </div>
         ))}
-        <p style={{fontSize:12,color:"var(--text-muted)",marginTop:8,lineHeight:1.6}}>RAG가 <strong>근거성에서 단독 LLM 우위</strong>(검색이 실제 수의학 지식에 근접). 관련성은 단독이 질문 어휘를 반복해 표면 점수가 높으나, 내용 정확성은 근거성·정성 분석에서 드러남. <strong>지식iN 150건 기준</strong> (대규모 600건 평가 진행 중).</p>
+        <p style={{fontSize:12,color:"var(--text-muted)",marginTop:8,lineHeight:1.6}}>RAG가 <strong>근거성에서 단독 LLM 우위</strong>(검색이 실제 수의학 지식에 근접). 관련성은 단독이 질문 어휘를 반복해 표면 점수가 높으나, 내용 정확성은 근거성·정성 분석에서 드러남. <strong>지식iN 300건 기준</strong> (표본 12→150→300건 모두 동일 결론 — 환각 judge 제외, 관련성·근거성).</p>
       </div>
     </div>
   );
