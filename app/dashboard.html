@@ -7996,6 +7996,42 @@ function SearchPage({ settings, setSettings }) {
                 </div>
               )}
             </div>
+            {data.compareResults && data.compareResults[query] && (
+              <div className="card" style={{marginTop:16}}>
+                <div className="card-head"><div><h4 className="card-title">4방향 답변 비교</h4><p className="card-sub">위 검색(B·C) + 생성까지 A.Gemini단독·B.TF-IDF·C.BERT·D.RAG 답변 + 관련성·근거성</p></div></div>
+                {[
+                  {k:"A. Gemini 단독", key:"gemini_only", color:"#6B708F", desc:"검색 없이 LLM만"},
+                  {k:"B. TF-IDF 검색", key:"tfidf_retrieval", color:"#E07856", desc:"키워드 top-1 원문"},
+                  {k:"C. BERT 검색", key:"bert_retrieval", color:"#3A9188", desc:"의미 top-1 원문"},
+                  {k:"D. RAG", key:"rag", color:"#2563EB", desc:"검색 근거 + 생성", best:true},
+                ].map(m=>{
+                  const cr=data.compareResults[query];
+                  const ans=cr[m.key]||"";
+                  const mt=(cr.metrics||{})[m.key]||{};
+                  return (
+                    <div key={m.key} style={{marginBottom:12,padding:"12px 14px",borderRadius:10,border:"1px solid "+(m.best?m.color:"var(--border)"),background:m.best?m.color+"0D":"var(--bg-elev)",borderLeft:"3px solid "+m.color}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                        <span style={{width:8,height:8,borderRadius:"50%",background:m.color}}/>
+                        <span style={{fontSize:13,fontWeight:m.best?700:600,color:m.best?m.color:"var(--text)"}}>{m.k}</span>
+                        <span style={{fontSize:11,color:"var(--text-subtle)"}}>{m.desc}</span>
+                        {m.best && <span style={{marginLeft:"auto",fontSize:10.5,color:m.color,fontWeight:600}}>메인 시스템</span>}
+                      </div>
+                      <p style={{fontSize:12.5,lineHeight:1.55,color:"var(--text-muted)",margin:"0 0 8px"}}>{ans.length>240?ans.slice(0,240)+"…":ans}</p>
+                      <div style={{display:"flex",gap:14}}>
+                        {[{l:"관련성",v:mt.relevance},{l:"근거성",v:mt.grounded}].map(x=>(
+                          <div key={x.l} style={{display:"flex",alignItems:"center",gap:6,flex:1}}>
+                            <span style={{fontSize:10.5,color:"var(--text-subtle)",width:34}}>{x.l}</span>
+                            <div style={{flex:1,height:6,background:"var(--bg-soft)",borderRadius:3,overflow:"hidden"}}><div style={{width:((x.v||0)*100)+"%",height:"100%",background:m.color,opacity:0.75}}/></div>
+                            <span style={{fontSize:11,fontFamily:"var(--font-mono)",color:"var(--text-muted)",width:36,textAlign:"right"}}>{(x.v||0).toFixed(3)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+                <p style={{fontSize:11,color:"var(--text-subtle)",marginTop:4,lineHeight:1.5}}>관련성=질문↔답변 코사인 · 근거성=답변↔수의사 데이터 코사인. RAG(D)가 검색 근거로 환각을 억제하며 균형 — 사전계산된 샘플 질문 기준.</p>
+              </div>
+            )}
           </div>
         )}
       </div>

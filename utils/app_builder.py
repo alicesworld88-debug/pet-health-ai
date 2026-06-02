@@ -299,4 +299,12 @@ def build_app_data(dl: DataLoader, include_sample_search: bool = True) -> dict:
         naver_qs = [q for qs in data["naver"]["samples"].values() for q in qs]
         sr.update(build_sample_results(dl, suggestions=naver_qs, matchers=(tfidf, bert)))
         data["sampleResults"] = sr
+    # 4방향 답변 사전계산 결과 (precompute 산출물, 있으면 주입 — sources 제외로 경량화)
+    from pathlib import Path as _Path
+    import json as _json
+    _cr = _Path(__file__).resolve().parent.parent / "data" / "processed" / "compare_results.json"
+    if _cr.exists():
+        _raw = _json.loads(_cr.read_text(encoding="utf-8"))
+        _keep = ("intent", "gemini_only", "tfidf_retrieval", "bert_retrieval", "rag", "metrics")
+        data["compareResults"] = {q: {k: v[k] for k in _keep if k in v} for q, v in _raw.items()}
     return data
