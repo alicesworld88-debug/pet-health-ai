@@ -8217,14 +8217,14 @@ function DataPage() {
     <div className="card">
       <div className="card-head"><div><h4 className="card-title">지식iN 커버리지 — 우리 코퍼스가 실제 질문을 얼마나 다루나</h4><p className="card-sub">네이버 지식iN 보호자 질문 8만 건 × 수의사 코퍼스 검색 (top-1 유사도)</p></div></div>
       <div style={{display:"flex",height:30,borderRadius:6,overflow:"hidden",marginBottom:10}}>
-        <div style={{width:"92.6%",background:"var(--accent)",display:"grid",placeItems:"center",fontSize:12,color:"#fff",fontWeight:700}}>92.6%</div>
-        <div style={{width:"7.0%",background:"oklch(0.72 0.13 75)"}}/>
-        <div style={{width:"0.4%",background:"var(--danger)"}}/>
+        <div style={{width:"92.6%",background:C.bert,display:"grid",placeItems:"center",fontSize:12,color:"#fff",fontWeight:700}}>92.6%</div>
+        <div style={{width:"7.0%",background:C.lcPuppy}}/>
+        <div style={{width:"0.4%",background:C.tfidf}}/>
       </div>
       <div style={{display:"flex",gap:18,fontSize:12.5,marginBottom:16}}>
-        <span><b style={{color:"var(--accent)"}}>92.6%</b> 잘 커버 (≥0.7)</span>
-        <span><b style={{color:"oklch(0.6 0.15 75)"}}>7.0%</b> 부분 (0.5~0.7)</span>
-        <span><b style={{color:"var(--danger)"}}>0.4%</b> 갭 (&lt;0.5)</span>
+        <span><b style={{color:C.bert}}>92.6%</b> 잘 커버 (≥0.7)</span>
+        <span><b style={{color:C.lcPuppy}}>7.0%</b> 부분 (0.5~0.7)</span>
+        <span><b style={{color:C.tfidf}}>0.4%</b> 갭 (&lt;0.5)</span>
       </div>
       <div className="metric-grid" style={{gridTemplateColumns:"repeat(3,1fr)"}}>
         {[{i:"증상 symptom",v:"95.2%"},{i:"처치 treatment",v:"93.3%"},{i:"응급 emergency",v:"86.3%"}].map((x,j)=>(
@@ -8272,7 +8272,7 @@ function DataPage() {
       <div className="card-head"><div><h4 className="card-title">② 분산 증상 되묻기 — 감별진단 보조</h4><p className="card-sub">VeNom presenting complaints 분석에서 단일 증상이 여러 질환에 매핑되는(매칭 분산) 5종 식별 → 하위 분류 추가 질문</p></div></div>
       <table className="table" style={{marginTop:4,tableLayout:"fixed",width:"100%"}}>
         <colgroup><col style={{width:84}}/><col style={{width:"40%"}}/><col/></colgroup>
-        <thead><tr><th>증상</th><th>챗봇 되묻기</th><th>임상 의의</th></tr></thead>
+        <thead><tr><th style={{textAlign:"left"}}>증상</th><th style={{textAlign:"left"}}>챗봇 되묻기</th><th style={{textAlign:"left"}}>임상 의의</th></tr></thead>
         <tbody>
           {[
             ["구토","혈액이 섞여 있었나요?","토혈 → 출혈성 위장질환·이물 감별"],
@@ -8331,6 +8331,28 @@ function DataPage() {
             <div style={{borderLeft:"3px solid var(--color-bert,#6366f1)",paddingLeft:13}}><strong>네이버 지식iN 보호자 질문 (114,439)</strong> — 실제 보호자의 구어체 질문. intent 분류기 학습(84.7%)·RAG 평가·커버리지(92.6%) 입력.</div>
             <div style={{borderLeft:"3px solid var(--warning)",paddingLeft:13}}><strong>VeNom 국제 수의용어 (39)</strong> — 구어체↔의학용어 정규화 34종 + 모호 증상 5종 되묻기. 검색 정확도 보강.</div>
           </div>
+        </div>
+        <div className="card">
+          <div className="card-head"><div><h4 className="card-title">데이터 연결 흐름 — 라벨이 아닌 ‘질문 의미’로 연결</h4><p className="card-sub">AI Hub(질병)와 지식iN(intent)은 직접 매칭이 아니라, 양쪽이 공통으로 가진 질문 텍스트를 BERT로 의미 매칭한다</p></div></div>
+          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginTop:6}}>
+            {[
+              ["보호자 질문","네이버 스타일 입력"],
+              ["① intent 분류","증상/응급/처치 라우팅"],
+              ["② BERT 임베딩","질문 의미 벡터화"],
+              ["③ AI Hub 질문 검색","input 코사인 유사도 ← 연결점"],
+              ["④ 답변+질병","검색된 수의사 Q&A"],
+              ["⑤ RAG 생성","근거 기반 답변"],
+            ].map(([t,dsc],i,arr)=>(
+              <React.Fragment key={i}>
+                <div style={{flex:"1 1 128px",minWidth:120,background:i===3?"var(--accent-soft)":"var(--bg-soft)",border:"1px solid "+(i===3?"var(--accent)":"var(--border)"),borderRadius:9,padding:"10px 12px"}}>
+                  <div style={{fontSize:12.5,fontWeight:700,color:i===3?"var(--accent)":"var(--text)"}}>{t}</div>
+                  <div style={{fontSize:10.5,color:"var(--text-muted)",marginTop:3,lineHeight:1.4}}>{dsc}</div>
+                </div>
+                {i<arr.length-1 && <span style={{color:"var(--text-subtle)",fontSize:15,flexShrink:0}}>→</span>}
+              </React.Fragment>
+            ))}
+          </div>
+          <p style={{fontSize:12,color:"var(--text-muted)",marginTop:13,lineHeight:1.6}}>핵심: <strong>질병 라벨 ↔ intent 라벨이 직접 매칭되는 게 아니라</strong>, 양쪽이 공통으로 가진 <strong>질문 텍스트</strong>를 BERT로 의미 매칭한다(③단계). intent는 입력 라우팅, 질병은 검색 결과 메타·평가 기준. <strong>커버리지 92.6%</strong>가 두 데이터의 의미적 연결을 증명한다.</p>
         </div>
       </>)}
 
@@ -8831,19 +8853,94 @@ function ImgCard({ span, title, desc, src, height=280 }) {
 function EdaPage() {
   const eda = (window.APP_DATA || {}).eda || {};
   const hasData = Object.keys(eda).length > 0;
+  const [sub, setSub] = React.useState("AI Hub 코퍼스");
+  const SUBS = ["AI Hub 코퍼스","네이버 지식iN"];
+  // 네이버: 질문-코퍼스 유사도 분포 히스토그램
+  const simHist = {
+    data:[{type:"bar",
+      x:["0.3~0.4","0.4~0.5","0.5~0.6","0.6~0.7","0.7~0.8","0.8~0.9","0.9~1.0"],
+      y:[19,319,1085,4493,38616,35346,122],
+      marker:{color:[C.tfidf,C.tfidf,C.lcPuppy,C.lcPuppy,C.bert,C.bert,C.bert]},
+      text:["19","319","1,085","4,493","38,616","35,346","122"], textposition:"outside"}],
+    layout:{xaxis:{title:"top-1 코사인 유사도"}, yaxis:{title:"질문 수",range:[0,44000]}, margin:{t:32,l:66,r:24,b:46}, height:300, showlegend:false}
+  };
+  // 네이버: 증상 키워드 빈도 (가로 막대)
+  const kwBar = {
+    data:[{type:"bar", orientation:"h",
+      y:["발적","콧물","가려움","혈변","절뚝","발작","경련","기침","호흡","식욕","설사","구토"],
+      x:[818,1087,1212,1365,1409,2259,2507,2586,2833,3391,6158,6991],
+      marker:{color:Array.from({length:12},(_,i)=>i===11?C.tfidf:C.bert)}, text:["818","1,087","1,212","1,365","1,409","2,259","2,507","2,586","2,833","3,391","6,158","6,991"], textposition:"outside"}],
+    layout:{xaxis:{title:"언급 횟수"}, margin:{t:16,l:60,r:46,b:42}, height:360, showlegend:false}
+  };
+  // 네이버: 품종 분포 (가로 막대)
+  const breedBar = {
+    data:[{type:"bar", orientation:"h",
+      y:["닥스훈트","리트리버","치와와","비숑","시츄","포메라니안","푸들","말티즈"],
+      x:[942,1127,1137,1241,1504,2205,3050,4088],
+      marker:{color:Array.from({length:8},(_,i)=>i===7?C.tfidf:C.lcSenior)}, text:["942","1,127","1,137","1,241","1,504","2,205","3,050","4,088"], textposition:"outside"}],
+    layout:{xaxis:{title:"언급 횟수"}, margin:{t:16,l:78,r:48,b:42}, height:300, showlegend:false}
+  };
+  // 네이버: intent × 증상 키워드 교차 히트맵 (데이터마이닝)
+  const intentHeat = {
+    data:[{type:"heatmap",
+      z:[[6.7,6.3,4.3,3.4,2.9,0.6,0.1,0.7,5.8,15.3,1.7,2.4],[8.1,6.4,1.8,0.9,31.1,6.4,6.2,5.0,3.8,14.0,0.5,2.1],[2.7,2.2,1.2,1.1,2.3,0.2,0.3,0.2,27.5,26.5,9.6,0.8]],
+      x:["구토","설사","식욕","기침","먹었","초콜릿","삼켰","중독","수술","약","중성화","발작"],
+      y:["증상","응급","처치"],
+      colorscale:[[0,"#F2EFEA"],[0.25,"#A9CFC8"],[1,"#3A9188"]],
+      texttemplate:"%{z}", textfont:{size:10}, hovertemplate:"%{y} · %{x}: %{z}%<extra></extra>",
+      colorbar:{title:"%",thickness:12,len:0.9}}],
+    layout:{xaxis:{side:"bottom"}, yaxis:{autorange:"reversed"}, margin:{t:10,l:54,r:10,b:54}, height:230}
+  };
   return (
     <div className="vstack" style={{gap:14}}>
-      <div className="callout">
-        <span className="ico"><Icon name="info" size={16}/></span>
-        <div>
-          <div className="t">탐색적 데이터 분석 · Exploratory Data Analysis</div>
-          <div className="d">
-            {hasData
-              ? "인터랙티브 차트"
-              : "run_dashboard.py 실행 시 실데이터 차트가 표시됩니다."}
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+        {SUBS.map(s=>(
+          <button key={s} onClick={()=>setSub(s)} style={{
+            padding:"8px 16px",borderRadius:9,fontSize:13,cursor:"pointer",
+            border:"1px solid "+(sub===s?"var(--accent)":"var(--border)"),
+            background:sub===s?"var(--accent-soft)":"var(--bg-elev)",
+            color:sub===s?"var(--accent)":"var(--text-muted)",fontWeight:sub===s?600:400,transition:"all .15s",
+          }}>{s}</button>
+        ))}
+      </div>
+      {sub==="네이버 지식iN" && (
+        <div className="vstack" style={{gap:14}}>
+          <div className="card">
+            <div className="card-head"><div><h4 className="card-title">질문 ↔ 코퍼스 유사도 분포</h4><p className="card-sub">지식iN 8만 질문의 top-1 코사인 유사도 히스토그램 — 0.7~0.9 구간에 집중(잘 커버)</p></div></div>
+            <PlotlyChart fig={simHist} height={300}/>
+          </div>
+          <div className="card">
+            <div className="card-head"><div><h4 className="card-title">증상 키워드 Top 12</h4><p className="card-sub">11만 질문 내 증상 언급 빈도 — 구토·설사가 압도적</p></div></div>
+            <PlotlyChart fig={kwBar} height={360}/>
+          </div>
+          <div className="card">
+            <div className="card-head"><div><h4 className="card-title">intent별 질문 특성 — 분류의 타당성</h4><p className="card-sub">intent마다 핵심 키워드가 확연히 다름 → 단순 라벨이 아닌 실제 다른 질문 유형</p></div></div>
+            <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+              <div style={{flex:"1 1 180px",background:"var(--bg-soft)",borderRadius:9,padding:"12px 14px",borderTop:"3px solid "+C.bert}}>
+                <div style={{fontSize:13,fontWeight:700,color:C.bert}}>증상 (52.7%)</div>
+                <div style={{fontSize:12,color:"var(--text-muted)",marginTop:5,lineHeight:1.6}}>구토 6.7% · 설사 6.3% · 식욕 4.3%<br/><strong>소화기 증상</strong> 위주</div>
+              </div>
+              <div style={{flex:"1 1 180px",background:"var(--bg-soft)",borderRadius:9,padding:"12px 14px",borderTop:"3px solid "+C.tfidf}}>
+                <div style={{fontSize:13,fontWeight:700,color:C.tfidf}}>응급 (24.0%)</div>
+                <div style={{fontSize:12,color:"var(--text-muted)",marginTop:5,lineHeight:1.6}}><strong>“먹었” 31.1%</strong> · 초콜릿 6.4% · 삼켰 6.2%<br/><strong>이물·중독 섭취</strong>가 핵심</div>
+              </div>
+              <div style={{flex:"1 1 180px",background:"var(--bg-soft)",borderRadius:9,padding:"12px 14px",borderTop:"3px solid "+C.lcSenior}}>
+                <div style={{fontSize:13,fontWeight:700,color:C.lcSenior}}>처치 (23.4%)</div>
+                <div style={{fontSize:12,color:"var(--text-muted)",marginTop:5,lineHeight:1.6}}>수술 27.5% · 약 26.5% · 중성화 9.6%<br/><strong>치료·관리</strong> 문의</div>
+              </div>
+            </div>
+          </div>
+          <div className="card">
+            <div className="card-head"><div><h4 className="card-title">intent × 증상 키워드 교차 히트맵</h4><p className="card-sub">데이터마이닝 교차 분석 — intent별 키워드 분포(%). 응급 ‘먹었’(31%)·처치 ‘수술/약’이 뚜렷한 변별 패턴</p></div></div>
+            <PlotlyChart fig={intentHeat} height={230}/>
+          </div>
+          <div className="card">
+            <div className="card-head"><div><h4 className="card-title">품종 분포 — 한국 소형견 인기 순</h4><p className="card-sub">질문에 언급된 품종 Top 8 — 말티즈·푸들·포메 등 소형견 집중</p></div></div>
+            <PlotlyChart fig={breedBar} height={300}/>
           </div>
         </div>
-      </div>
+      )}
+      {sub==="AI Hub 코퍼스" && (
       <div className="eda-grid">
         {/* Row 1: 생애주기 × 질병 히트맵 (전체 폭) */}
         <HCard span="span-12"
@@ -8877,6 +8974,7 @@ function EdaPage() {
           <TreemapChart data={eda.treemap_data}/>
         </SvgCard>
       </div>
+      )}
     </div>
   );
 }
