@@ -9026,6 +9026,21 @@ function EvalPage() {
     data:[{type:"bar", x:G4, y:[256,336,385,183], marker:{color:G4COL, opacity:0.4, line:{width:2, color:G4COL}}, text:["256","336","385","183"], textposition:"outside"}],
     layout:{yaxis:{title:"평균 답변 길이(자)",range:[0,440]}, margin:{t:26,l:50,r:20,b:40}, height:280, showlegend:false}
   };
+  // 전체 검증셋 2,399건 Hit@1 (생애주기·진료과별)
+  const fullLifeBars = {
+    data:[
+      {type:"bar", name:"TF-IDF", x:["자견","성견","노령견"], y:[25.4,24.6,21.4], marker:{color:C.tfidf, opacity:0.4, line:{width:2, color:C.tfidf}}},
+      {type:"bar", name:"BERT", x:["자견","성견","노령견"], y:[23.7,26.4,24.0], marker:{color:C.bert, opacity:0.4, line:{width:2, color:C.bert}}},
+    ],
+    layout:{barmode:"group", yaxis:{title:"Hit@1 (%)",range:[0,35]}, margin:{t:30,l:50,r:20,b:36}, height:280, legend:{orientation:"h",y:1.18,x:0.5,xanchor:"center"}}
+  };
+  const fullDeptBars = {
+    data:[
+      {type:"bar", name:"TF-IDF", x:["내과","외과","피부과","치과","안과"], y:[24.8,23.0,24.9,23.3,15.7], marker:{color:C.tfidf, opacity:0.4, line:{width:2, color:C.tfidf}}},
+      {type:"bar", name:"BERT", x:["내과","외과","피부과","치과","안과"], y:[26.0,20.7,26.9,21.7,30.4], marker:{color:C.bert, opacity:0.4, line:{width:2, color:C.bert}}},
+    ],
+    layout:{barmode:"group", yaxis:{title:"Hit@1 (%)",range:[0,35]}, margin:{t:30,l:50,r:20,b:36}, height:280, legend:{orientation:"h",y:1.18,x:0.5,xanchor:"center"}}
+  };
   return (
     <div className="vstack" style={{gap:20}}>
       <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -9232,6 +9247,17 @@ function EvalPage() {
         </div>
         <p style={{fontSize:12,color:"var(--text-muted)",marginTop:12,lineHeight:1.6}}>GT 50건(의미적으로 어려운 쿼리)에선 BERT가 뚜렷한 우위(Hit@1 +6%p)지만, 전체 2,399건 평균에선 McNemar p=0.46·Bootstrap CI가 0을 포함해 <strong>통계적 유의차 없음</strong>. → BERT 우위는 구어체·희귀 증상 등 특정 질의에 집중되며, 쉬운 질의에선 두 방법이 대등하다.</p>
       </div>
+      {/* 전체 검증셋 2,399건 — 생애주기·진료과별 Hit@1 세분 (노트북 08) */}
+      <div className="section-row">
+        <div className="card">
+          <div className="card-head"><div><h4 className="card-title">생애주기별 Hit@1 (2,399건)</h4><p className="card-sub">노령견에서 BERT 우위(24.0 vs 21.4)</p></div></div>
+          <PlotlyChart fig={fullLifeBars} height={280}/>
+        </div>
+        <div className="card">
+          <div className="card-head"><div><h4 className="card-title">진료과별 Hit@1 (2,399건)</h4><p className="card-sub">안과 BERT 30.4 vs TF-IDF 15.7 — 의미 검색 우위 뚜렷</p></div></div>
+          <PlotlyChart fig={fullDeptBars} height={280}/>
+        </div>
+      </div>
       </>)}
       {sub==="답변 비교 (4방향)" && (<>
       <div className="callout">
@@ -9308,21 +9334,24 @@ function MatchingPage() {
   const [lifeFilter, setLifeFilter] = React.useState("all");
   const [viewMode, setViewMode] = React.useState("both");
   const [openId, setOpenId] = React.useState("Q006");
+  // 전체 2,399건 데이터 테이블 필터·페이징
+  const [fmLife, setFmLife] = React.useState("all");
+  const [fmResult, setFmResult] = React.useState("all");
+  const [fmPage, setFmPage] = React.useState(0);
   const filtered = d.evalQueries.filter(q=>lifeFilter==="all"||lifeMap[lifeFilter]===q.life);
-  const fullLifeBars = {
-    data:[
-      {type:"bar", name:"TF-IDF", x:["자견","성견","노령견"], y:[25.4,24.6,21.4], marker:{color:C.tfidf, opacity:0.4, line:{width:2, color:C.tfidf}}},
-      {type:"bar", name:"BERT", x:["자견","성견","노령견"], y:[23.7,26.4,24.0], marker:{color:C.bert, opacity:0.4, line:{width:2, color:C.bert}}},
-    ],
-    layout:{barmode:"group", yaxis:{title:"Hit@1 (%)",range:[0,35]}, margin:{t:30,l:50,r:20,b:36}, height:280, legend:{orientation:"h",y:1.18,x:0.5,xanchor:"center"}}
-  };
-  const fullDeptBars = {
-    data:[
-      {type:"bar", name:"TF-IDF", x:["내과","외과","피부과","치과","안과"], y:[24.8,23.0,24.9,23.3,15.7], marker:{color:C.tfidf, opacity:0.4, line:{width:2, color:C.tfidf}}},
-      {type:"bar", name:"BERT", x:["내과","외과","피부과","치과","안과"], y:[26.0,20.7,26.9,21.7,30.4], marker:{color:C.bert, opacity:0.4, line:{width:2, color:C.bert}}},
-    ],
-    layout:{barmode:"group", yaxis:{title:"Hit@1 (%)",range:[0,35]}, margin:{t:30,l:50,r:20,b:36}, height:280, legend:{orientation:"h",y:1.18,x:0.5,xanchor:"center"}}
-  };
+  const PER = 20;
+  const fmAll = d.fullMatching || [];
+  const fmFiltered = fmAll.filter(r=>{
+    if (fmLife!=="all" && r.lifeCycle!==fmLife) return false;
+    if (fmResult==="bertWin"  && !(r.bert_hit1===1 && r.tfidf_hit1===0)) return false;
+    if (fmResult==="tfidfWin" && !(r.tfidf_hit1===1 && r.bert_hit1===0)) return false;
+    if (fmResult==="bothHit"  && !(r.tfidf_hit1===1 && r.bert_hit1===1)) return false;
+    if (fmResult==="bothMiss" && !(r.tfidf_hit1===0 && r.bert_hit1===0)) return false;
+    return true;
+  });
+  const fmPages = Math.max(1, Math.ceil(fmFiltered.length/PER));
+  const fmPg = Math.min(fmPage, fmPages-1);
+  const fmSlice = fmFiltered.slice(fmPg*PER, fmPg*PER+PER);
   return (
     <div className="vstack" style={{gap:14}}>
       <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -9357,27 +9386,62 @@ function MatchingPage() {
       </>)}
       {sub==="전체 2,399건 (자동)" && (<>
       <div className="callout">
-        <span className="ico"><Icon name="trending" size={16}/></span>
+        <span className="ico"><Icon name="list" size={16}/></span>
         <div>
-          <div className="t">전체 검증셋 2,399건 자동 평가 — 안과에서 BERT 압도적</div>
-          <div className="d">수동 GT 50건과 달리 전체 검증셋(자견 782·성견 808·노령견 809)의 자동 Hit@1. 전체 TF-IDF 23.8% / BERT 24.7%. 특히 <strong>안과에서 BERT 30.4% vs TF-IDF 15.7%</strong>로 의미 검색 우위가 뚜렷.</div>
+          <div className="t">전체 검증셋 2,399건 — 쿼리별 자동 Hit@1 원본 데이터</div>
+          <div className="d">각 보호자 질문에 대해 TF-IDF·BERT 검색의 정답 질병 top-1 적중(✓/✗)을 표로 제공. 전체 TF-IDF 23.8% / BERT 24.7%. <span style={{color:"var(--text-subtle)"}}>(생애주기·진료과별 Hit율 그래프는 모델평가 → 검색 평가 탭으로 이동)</span></div>
         </div>
       </div>
-      <div className="metric-grid">
-        <div className="metric"><div className="label">전체 쿼리</div><div className="value">2,399</div><div className="foot">자동 평가</div></div>
-        <div className="metric"><div className="label">TF-IDF Hit@1</div><div className="value">23.8%</div><div className="foot">키워드 검색</div></div>
-        <div className="metric"><div className="label" style={{color:C.bert}}>BERT Hit@1 ★</div><div className="value" style={{color:C.bert}}>24.7%</div><div className="foot">의미 검색</div></div>
-        <div className="metric"><div className="label">안과 BERT 우위</div><div className="value">+14.7%p</div><div className="foot">30.4 vs 15.7</div></div>
+      <div className="filter-bar">
+        <div className="filter-group">
+          <span className="g-label">생애주기</span>
+          <div className="seg">
+            {[["all","전체"],["자견","자견"],["성견","성견"],["노령견","노령견"]].map(([k,l])=>(
+              <button key={k} className={"seg-btn "+(fmLife===k?"active":"")} onClick={()=>{setFmLife(k);setFmPage(0);}} style={{minWidth:54}}>{l}</button>
+            ))}
+          </div>
+        </div>
+        <div className="filter-group">
+          <span className="g-label">검색 결과</span>
+          <div className="seg">
+            {[["all","전체"],["bertWin","BERT만 ✓"],["tfidfWin","TF-IDF만 ✓"],["bothHit","둘다 ✓"],["bothMiss","둘다 ✗"]].map(([k,l])=>(
+              <button key={k} className={"seg-btn "+(fmResult===k?"active":"")} onClick={()=>{setFmResult(k);setFmPage(0);}} style={{minWidth:64}}>{l}</button>
+            ))}
+          </div>
+        </div>
+        <div className="grow"/>
+        <span className="pill"><Icon name="list" size={11}/><span>{fmFiltered.length.toLocaleString()}건</span></span>
       </div>
-      <div className="section-row">
-        <div className="card">
-          <div className="card-head"><div><h4 className="card-title">생애주기별 Hit@1 (2,399건)</h4><p className="card-sub">노령견에서 BERT 우위(24.0 vs 21.4)</p></div></div>
-          <PlotlyChart fig={fullLifeBars} height={280}/>
-        </div>
-        <div className="card">
-          <div className="card-head"><div><h4 className="card-title">진료과별 Hit@1 (2,399건)</h4><p className="card-sub">안과·피부과·내과 BERT 우위 · 외과·치과 TF-IDF</p></div></div>
-          <PlotlyChart fig={fullDeptBars} height={280}/>
-        </div>
+      <div className="card" style={{padding:0,overflow:"hidden"}}>
+        <table className="table" style={{margin:0}}>
+          <thead><tr>
+            <th style={{textAlign:"left",width:40}}>#</th>
+            <th style={{textAlign:"left"}}>보호자 질문</th>
+            <th style={{textAlign:"left",width:68}}>생애주기</th>
+            <th style={{textAlign:"left",width:60}}>진료과</th>
+            <th style={{textAlign:"left",width:104}}>정답 질병</th>
+            <th style={{textAlign:"center",width:60}}>TF-IDF</th>
+            <th style={{textAlign:"center",width:56}}>BERT</th>
+          </tr></thead>
+          <tbody>
+            {fmSlice.map((r,i)=>(
+              <tr key={i}>
+                <td style={{color:"var(--text-subtle)",fontFamily:"var(--font-mono)",fontSize:11}}>{fmPg*PER+i+1}</td>
+                <td style={{fontSize:12,lineHeight:1.45}}>{r.query}</td>
+                <td style={{fontSize:12,color:"var(--text-muted)"}}>{r.lifeCycle}</td>
+                <td style={{fontSize:12,color:"var(--text-muted)"}}>{r.department}</td>
+                <td style={{fontSize:12,color:"var(--text-muted)"}}>{r.disease}</td>
+                <td style={{textAlign:"center",fontWeight:700,fontSize:13,color:r.tfidf_hit1===1?C.tfidf:"var(--text-subtle)"}}>{r.tfidf_hit1===1?"✓":"✗"}</td>
+                <td style={{textAlign:"center",fontWeight:700,fontSize:13,color:r.bert_hit1===1?C.bert:"var(--text-subtle)"}}>{r.bert_hit1===1?"✓":"✗"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:14,marginTop:2}}>
+        <button onClick={()=>setFmPage(Math.max(0,fmPg-1))} disabled={fmPg===0} style={{padding:"6px 16px",borderRadius:8,fontSize:12,cursor:fmPg===0?"default":"pointer",border:"1px solid var(--border)",background:"var(--bg-elev)",color:fmPg===0?"var(--text-subtle)":"var(--text-muted)",opacity:fmPg===0?0.45:1}}>← 이전</button>
+        <span style={{fontSize:12,color:"var(--text-muted)",fontFamily:"var(--font-mono)"}}>{fmPg+1} / {fmPages}</span>
+        <button onClick={()=>setFmPage(Math.min(fmPages-1,fmPg+1))} disabled={fmPg>=fmPages-1} style={{padding:"6px 16px",borderRadius:8,fontSize:12,cursor:fmPg>=fmPages-1?"default":"pointer",border:"1px solid var(--border)",background:"var(--bg-elev)",color:fmPg>=fmPages-1?"var(--text-subtle)":"var(--text-muted)",opacity:fmPg>=fmPages-1?0.45:1}}>다음 →</button>
       </div>
       </>)}
     </div>
@@ -9471,7 +9535,7 @@ const pageDesc = {
   data:"AI Hub 코퍼스·네이버 지식iN·VeNom 3개 데이터 소스의 규모와 분포를 요약합니다.",
   eda:"AI Hub(생애주기·진료과·질병)와 네이버 지식iN(유사도·키워드·교차 분석)의 탐색 분석을 시각화합니다.",
   eval:"검색 모델(TF-IDF·BERT)의 Hit@k·MAP@5와 답변 비교 (4방향)(Gemini단독·검색·RAG)의 관련성·근거성을 정량 비교합니다.",
-  matching:"수동 GT 50건(쿼리별 top-5 검색)과 전체 자동 2,399건(hit율 요약)을 서브탭으로 탐색합니다.",
+  matching:"수동 GT 50건(쿼리별 top-5 검색)과 전체 자동 2,399건(쿼리별 원본 데이터 테이블·필터/페이징)을 서브탭으로 탐색합니다.",
   chat:"증상·처치·응급 질문을 입력하면 수의사 Q&A를 참고해 AI가 답변합니다.",
   discussion:"실험 결과 해석과 한계·오류 분석·향후 과제를 정리합니다.",
 };

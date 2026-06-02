@@ -28,7 +28,8 @@ APP_DATA = build_app_data(dl)
 print("EDA 차트 생성 중...")
 eda_charts = ChartBuilder(dl.corpus).build_all()
 APP_DATA["eda"] = eda_charts
-print(f"완료 — EDA 차트 {len(eda_charts)}개 · {len(json.dumps(APP_DATA)) // 1024}KB")
+APP_DATA["fullMatching"] = dl.full_matching.to_dict("records")
+print(f"완료 — EDA 차트 {len(eda_charts)}개 · 전체매칭 {len(APP_DATA['fullMatching'])}건 · {len(json.dumps(APP_DATA)) // 1024}KB")
 
 # dashboard_live.html 생성 (EDA 데이터 + 테마 CSS 포함)
 html = SRC.read_text(encoding="utf-8")

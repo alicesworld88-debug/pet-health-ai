@@ -39,6 +39,14 @@ class DataLoader:
         return df
 
     @cached_property
+    def full_matching(self) -> pd.DataFrame:
+        """전체 검증셋 2,399건 매칭 결과 + 쿼리 텍스트 (validation 코퍼스 조인)."""
+        fm = pd.read_csv(self._processed / "full_matching_results.csv").reset_index(drop=True)
+        val = self.corpus[self.corpus["split"] == "validation"].reset_index(drop=True)
+        fm["query"] = val["input"].astype(str).str.slice(0, 110).values
+        return fm[["query", "lifeCycle", "department", "disease", "tfidf_hit1", "bert_hit1"]]
+
+    @cached_property
     def eval_summary(self) -> pd.DataFrame:
         return pd.read_csv(self._processed / "evaluation_summary.csv")
 
