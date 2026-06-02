@@ -8061,113 +8061,282 @@ const ThemeContext = React.createContext("light");
 
 function DataPage() {
   const d = window.APP_DATA;
+  const [sub, setSub] = React.useState("전체");
   const totalLife = d.lifecycle.reduce((s,x)=>s+x.count,0);
   const lcColors = [C.lcPuppy, C.lcAdult, C.lcSenior];
   const deptColors = C.dept;
-  return (
-    <div className="vstack" style={{gap:20}}>
-      <div className="metric-grid">
-        <div className="metric"><div className="label">전체 Q&A · Total</div><div className="value">{d.stats.total.toLocaleString()}</div><div className="foot">AI Hub · 반려견 말뭉치</div></div>
-        <div className="metric"><div className="label">학습 데이터 · Train</div><div className="value">{d.stats.train.toLocaleString()}</div><div className="foot">{(d.stats.train/d.stats.total*100).toFixed(1)}% of total</div></div>
-        <div className="metric"><div className="label">검증 데이터 · Validation</div><div className="value">{d.stats.val.toLocaleString()}</div><div className="foot">{(d.stats.val/d.stats.total*100).toFixed(1)}% · hit-rate eval</div></div>
-        <div className="metric"><div className="label">진료과 · Departments</div><div className="value">{d.stats.depts}</div><div className="foot">내과 / 외과 / 피부 / 안과 / 치과</div></div>
+  const SUBS = ["전체","AI Hub 코퍼스","네이버 지식iN","VeNom"];
+
+  // 질병 트리맵 (기타 제외 실제 질병 Top 11)
+  const diseaseTree = {
+    data:[{type:"treemap",
+      labels:["중성화수술","무릎뼈 탈구","중독","골절","심장사상충","자궁축농증","외이염","위장관폐색","아토피성 피부염","방광염","결막염"],
+      parents:["","","","","","","","","","",""],
+      values:[642,593,473,408,396,367,326,256,248,228,152],
+      textinfo:"label+value", textfont:{color:"#fff",size:12},
+      marker:{colors:Array.from({length:11},(_,i)=>lcColors[i%3]), line:{width:1.5,color:"#fff"}}}],
+    layout:{margin:{t:8,l:8,r:8,b:8}, height:300}
+  };
+  // 진료과 버블 (건수 × 평균 질문 길이)
+  const deptBubble = {
+    data:[{type:"scatter", mode:"markers+text",
+      x:[11049,5758,2834,1085,878], y:[308,410,272,259,332],
+      text:["내과","외과","피부과","안과","치과"], textposition:"top center",
+      marker:{size:[58,42,30,20,18], color:deptColors, opacity:0.7, line:{width:1,color:"#fff"}}}],
+    layout:{xaxis:{title:"Q&A 건수"}, yaxis:{title:"평균 질문 길이(자)"}, margin:{t:10,l:58,r:20,b:46}, height:300, showlegend:false}
+  };
+  // 데이터 소스 규모 비교 (로그 스케일 — 규모 차이가 커서)
+  const sourceBar = {
+    data:[{type:"bar",
+      x:["네이버 지식iN","AI Hub 코퍼스","VeNom 용어"], y:[114439,21604,39],
+      marker:{color:[C.dept[3], C.bert, C.lcPuppy]},
+      text:["114,439건","21,604건","39종"], textposition:"outside", textfont:{size:12}, cliponaxis:false}],
+    layout:{yaxis:{type:"log",title:"건수 (로그)",range:[0.5,6.6]}, margin:{t:26,l:62,r:24,b:42}, height:270, showlegend:false}
+  };
+
+  const aiHubBlock = (<>
+    <div className="metric-grid">
+      <div className="metric"><div className="label">전체 Q&A · Total</div><div className="value">{d.stats.total.toLocaleString()}</div><div className="foot">AI Hub · 반려견 말뭉치</div></div>
+      <div className="metric"><div className="label">학습 데이터 · Train</div><div className="value">{d.stats.train.toLocaleString()}</div><div className="foot">{(d.stats.train/d.stats.total*100).toFixed(1)}% of total</div></div>
+      <div className="metric"><div className="label">검증 데이터 · Validation</div><div className="value">{d.stats.val.toLocaleString()}</div><div className="foot">{(d.stats.val/d.stats.total*100).toFixed(1)}% · hit-rate eval</div></div>
+      <div className="metric"><div className="label">진료과 · Departments</div><div className="value">{d.stats.depts}</div><div className="foot">내과 / 외과 / 피부 / 안과 / 치과</div></div>
+    </div>
+    <div className="section-row">
+      <div className="card">
+        <div className="card-head">
+          <div><h4 className="card-title">생애주기 분포</h4><p className="card-sub">자견 / 성견 / 노령견 — 균형 잡힌 클래스 분포</p></div>
+          <span className="pill"><Icon name="check" size={11}/>Balanced</span>
+        </div>
+        <div className="stack-bar">
+          {d.lifecycle.map((l,i)=>{
+            const pct=(l.count/totalLife)*100;
+            return <div key={l.key} className="stack-seg" style={{flexBasis:pct+"%",background:lcColors[i],opacity:1-i*0.1}}>{pct.toFixed(1)}%</div>;
+          })}
+        </div>
+        <div className="stack-legend">
+          {d.lifecycle.map((l,i)=>(
+            <div key={l.key} className="item"><span className="sw" style={{background:lcColors[i]}}/><span>{l.ko} ({l.en})</span><span className="mono" style={{color:"var(--text)"}}>{l.count.toLocaleString()}</span></div>
+          ))}
+        </div>
       </div>
       <div className="card">
-        <div className="card-head"><div><h4 className="card-title">네이버 지식iN 보호자 질문 (수집 데이터)</h4><p className="card-sub">실제 보호자가 올린 질문 — intent 분류기 학습 · RAG 평가 · 커버리지 분석 입력</p></div><span className="pill"><Icon name="check" size={11}/>114,439건</span></div>
-        <div className="metric-grid">
-          <div className="metric"><div className="label">전체 수집 · Total</div><div className="value">114,439</div><div className="foot">네이버 지식iN Open API</div></div>
-          <div className="metric"><div className="label">증상 · Symptom</div><div className="value">60,301</div><div className="foot">52.7%</div></div>
-          <div className="metric"><div className="label">응급 · Emergency</div><div className="value">27,408</div><div className="foot">24.0%</div></div>
-          <div className="metric"><div className="label">처치 · Treatment</div><div className="value">26,730</div><div className="foot">23.4%</div></div>
+        <div className="card-head">
+          <div><h4 className="card-title">진료과 분포</h4><p className="card-sub">내과가 전체 절반 이상 — 불균형 주의</p></div>
+          <span className="pill" style={{background:"color-mix(in oklch,var(--warning) 10%,transparent)",color:"var(--warning)",borderColor:"transparent"}}><Icon name="info" size={11}/>Imbalanced</span>
         </div>
-        <p style={{fontSize:12,color:"var(--text-muted)",marginTop:12,lineHeight:1.6}}>평균 질문 길이 147자. 중복 제거 후 <strong>111,572건</strong>으로 intent 분류기 학습(정확도 84.7%). AI Hub 수의사 코퍼스(답변 데이터)와 달리 지식iN은 <strong>실제 보호자 질문</strong>이라 챗봇 입력 분포를 대표한다.</p>
-      </div>
-      <div className="section-row">
-        <div className="card">
-          <div className="card-head">
-            <div><h4 className="card-title">생애주기 분포</h4><p className="card-sub">자견 / 성견 / 노령견 — 균형 잡힌 클래스 분포</p></div>
-            <span className="pill"><Icon name="check" size={11}/>Balanced</span>
-          </div>
-          <div className="stack-bar">
-            {d.lifecycle.map((l,i)=>{
-              const pct=(l.count/totalLife)*100;
-              return <div key={l.key} className="stack-seg" style={{flexBasis:pct+"%",background:lcColors[i],opacity:1-i*0.1}}>{pct.toFixed(1)}%</div>;
-            })}
-          </div>
-          <div className="stack-legend">
-            {d.lifecycle.map((l,i)=>(
-              <div key={l.key} className="item"><span className="sw" style={{background:lcColors[i]}}/><span>{l.ko} ({l.en})</span><span className="mono" style={{color:"var(--text)"}}>{l.count.toLocaleString()}</span></div>
+        <div className="donut-wrap">
+          <DonutChart items={d.department}/>
+          <div className="legend">
+            {d.department.map((x,i)=>(
+              <div key={x.key} className="legend-row">
+                <span className="sw" style={{background:deptColors[i]}}/><span className="n">{x.ko}</span>
+                <span className="c">{x.en}</span><span className="p">{x.pct}%</span>
+              </div>
             ))}
           </div>
         </div>
-        <div className="card">
-          <div className="card-head">
-            <div><h4 className="card-title">진료과 분포</h4><p className="card-sub">내과가 전체 절반 이상 — 불균형 주의</p></div>
-            <span className="pill" style={{background:"color-mix(in oklch,var(--warning) 10%,transparent)",color:"var(--warning)",borderColor:"transparent"}}><Icon name="info" size={11}/>Imbalanced</span>
-          </div>
-          <div className="donut-wrap">
-            <DonutChart items={d.department}/>
-            <div className="legend">
-              {d.department.map((x,i)=>(
-                <div key={x.key} className="legend-row">
-                  <span className="sw" style={{background:deptColors[i]}}/><span className="n">{x.ko}</span>
-                  <span className="c">{x.en}</span><span className="p">{x.pct}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
       </div>
-      <div className="section-row">
-        <div className="card">
-          <div className="card-head">
-            <div><h4 className="card-title">질병 Top 10</h4><p className="card-sub">"기타"가 16,611건으로 77% 차지 — 극단적 롱테일</p></div>
-          </div>
-          <div className="vstack" style={{gap:2,marginTop:4}}>
-            {d.diseaseTop.map((x,i)=>{
-              const max=d.diseaseTop[0].count; const pct=(x.count/max)*100;
-              return (
-                <div key={x.name} className="bar-row">
-                  <div className="bar-label">{x.name}</div>
-                  <div className="bar-track"><div className="bar-fill solid" style={{width:pct+"%",background:i===0?"#9CA3AF":`rgba(58,145,136,${Math.max(0.4,1-i*0.07)})`}}/></div>
-                  <div className="bar-val">{x.count.toLocaleString()}</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        <div className="card" style={{alignSelf:"start"}}>
-          <div className="card-head"><div><h4 className="card-title">텍스트 길이 통계</h4><p className="card-sub">답변이 질문보다 대체로 20% 긴 경향</p></div></div>
-          <table className="table" style={{marginTop:4,tableLayout:"fixed"}}>
-            <colgroup><col/><col style={{width:110}}/><col style={{width:110}}/></colgroup>
-            <thead><tr><th>통계</th><th>질문</th><th>답변</th></tr></thead>
-            <tbody>
-              <tr><td className="strong">평균 · Mean</td><td className="num">{(d.textStats||{q_mean:329}).q_mean}자</td><td className="num">{(d.textStats||{a_mean:394}).a_mean}자</td></tr>
-              <tr><td className="strong">중앙값 · Median</td><td className="num">{(d.textStats||{q_median:258}).q_median}자</td><td className="num">{(d.textStats||{a_median:317}).a_median}자</td></tr>
-              <tr><td className="strong">최댓값 · Max</td><td className="num">{((d.textStats||{q_max:3208}).q_max).toLocaleString()}자</td><td className="num">{((d.textStats||{a_max:3707}).a_max).toLocaleString()}자</td></tr>
-            </tbody>
-          </table>
-        </div>
+    </div>
+    <div className="section-row">
+      <div className="card">
+        <div className="card-head"><div><h4 className="card-title">질병 분포 트리맵</h4><p className="card-sub">"기타"(16,611건·77%) 제외한 실제 질병 Top 11 — 면적 = 건수</p></div></div>
+        <PlotlyChart fig={diseaseTree} height={300}/>
       </div>
       <div className="card">
-        <div className="card-head"><div><h4 className="card-title">지식iN 커버리지 — 우리 코퍼스가 실제 질문을 얼마나 다루나</h4><p className="card-sub">네이버 지식iN 보호자 질문 8만 건 × 수의사 코퍼스 검색 (top-1 유사도)</p></div></div>
-        <div style={{display:"flex",height:30,borderRadius:6,overflow:"hidden",marginBottom:10}}>
-          <div style={{width:"92.6%",background:"var(--accent)",display:"grid",placeItems:"center",fontSize:12,color:"#fff",fontWeight:700}}>92.6%</div>
-          <div style={{width:"7.0%",background:"oklch(0.72 0.13 75)"}}/>
-          <div style={{width:"0.4%",background:"var(--danger)"}}/>
-        </div>
-        <div style={{display:"flex",gap:18,fontSize:12.5,marginBottom:16}}>
-          <span><b style={{color:"var(--accent)"}}>92.6%</b> 잘 커버 (≥0.7)</span>
-          <span><b style={{color:"oklch(0.6 0.15 75)"}}>7.0%</b> 부분 (0.5~0.7)</span>
-          <span><b style={{color:"var(--danger)"}}>0.4%</b> 갭 (&lt;0.5)</span>
-        </div>
-        <div className="metric-grid" style={{gridTemplateColumns:"repeat(3,1fr)"}}>
-          {[{i:"증상 symptom",v:"95.2%"},{i:"처치 treatment",v:"93.3%"},{i:"응급 emergency",v:"86.3%"}].map((x,j)=>(
-            <div key={j} className="metric"><div className="label">{x.i} 커버율</div><div className="value" style={{fontSize:22}}>{x.v}</div><div className="foot">유사도 ≥ 0.70</div></div>
-          ))}
-        </div>
-        <p style={{fontSize:12,color:"var(--text-muted)",marginTop:12,lineHeight:1.6}}>실제 보호자 질문의 <strong>92.6%</strong>를 수의사 코퍼스(21,604건)로 답변 가능하며, 코퍼스에 유사 사례가 없는 갭은 <strong>0.4%</strong>뿐. 평균 유사도 0.783 · 중앙값 0.794. (지식iN 8만 건 무작위 샘플, seed=42)</p>
+        <div className="card-head"><div><h4 className="card-title">진료과 버블 — 건수 × 질문 길이</h4><p className="card-sub">버블 크기 = Q&A 건수 · 외과가 가장 긴 질문(410자)</p></div></div>
+        <PlotlyChart fig={deptBubble} height={300}/>
       </div>
+    </div>
+    <div className="section-row">
+      <div className="card">
+        <div className="card-head"><div><h4 className="card-title">질병 Top 10</h4><p className="card-sub">"기타"가 16,611건으로 77% 차지 — 극단적 롱테일</p></div></div>
+        <div className="vstack" style={{gap:2,marginTop:4}}>
+          {d.diseaseTop.map((x,i)=>{
+            const max=d.diseaseTop[0].count; const pct=(x.count/max)*100;
+            return (
+              <div key={x.name} className="bar-row">
+                <div className="bar-label">{x.name}</div>
+                <div className="bar-track"><div className="bar-fill solid" style={{width:pct+"%",background:i===0?"#9CA3AF":`rgba(58,145,136,${Math.max(0.4,1-i*0.07)})`}}/></div>
+                <div className="bar-val">{x.count.toLocaleString()}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="card" style={{alignSelf:"start"}}>
+        <div className="card-head"><div><h4 className="card-title">텍스트 길이 통계</h4><p className="card-sub">답변이 질문보다 대체로 20% 긴 경향</p></div></div>
+        <table className="table" style={{marginTop:4,tableLayout:"fixed"}}>
+          <colgroup><col/><col style={{width:110}}/><col style={{width:110}}/></colgroup>
+          <thead><tr><th>통계</th><th>질문</th><th>답변</th></tr></thead>
+          <tbody>
+            <tr><td className="strong">평균 · Mean</td><td className="num">{(d.textStats||{q_mean:329}).q_mean}자</td><td className="num">{(d.textStats||{a_mean:394}).a_mean}자</td></tr>
+            <tr><td className="strong">중앙값 · Median</td><td className="num">{(d.textStats||{q_median:258}).q_median}자</td><td className="num">{(d.textStats||{a_median:317}).a_median}자</td></tr>
+            <tr><td className="strong">최댓값 · Max</td><td className="num">{((d.textStats||{q_max:3208}).q_max).toLocaleString()}자</td><td className="num">{((d.textStats||{a_max:3707}).a_max).toLocaleString()}자</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </>);
+
+  const naverBlock = (<>
+    <div className="card">
+      <div className="card-head"><div><h4 className="card-title">네이버 지식iN 보호자 질문 (수집 데이터)</h4><p className="card-sub">실제 보호자가 올린 질문 — intent 분류기 학습 · RAG 평가 · 커버리지 분석 입력</p></div><span className="pill"><Icon name="check" size={11}/>114,439건</span></div>
+      <div className="metric-grid">
+        <div className="metric"><div className="label">전체 수집 · Total</div><div className="value">114,439</div><div className="foot">네이버 지식iN Open API</div></div>
+        <div className="metric"><div className="label">증상 · Symptom</div><div className="value">60,301</div><div className="foot">52.7%</div></div>
+        <div className="metric"><div className="label">응급 · Emergency</div><div className="value">27,408</div><div className="foot">24.0%</div></div>
+        <div className="metric"><div className="label">처치 · Treatment</div><div className="value">26,730</div><div className="foot">23.4%</div></div>
+      </div>
+      <div style={{marginTop:16}}>
+        <div style={{fontSize:12,color:"var(--text-subtle)",marginBottom:6,fontWeight:600}}>intent 분포</div>
+        <div className="stack-bar">
+          <div className="stack-seg" style={{flexBasis:"52.7%",background:C.bert}}>증상 52.7%</div>
+          <div className="stack-seg" style={{flexBasis:"24.0%",background:C.tfidf}}>응급 24.0%</div>
+          <div className="stack-seg" style={{flexBasis:"23.4%",background:C.dept[3]}}>처치 23.4%</div>
+        </div>
+      </div>
+      <div style={{marginTop:14}}>
+        <div style={{fontSize:12,color:"var(--text-subtle)",marginBottom:6,fontWeight:600}}>질문 길이 분포</div>
+        <div className="stack-bar">
+          <div className="stack-seg" style={{flexBasis:"63.0%",background:C.bert}}>100~150자 63%</div>
+          <div className="stack-seg" style={{flexBasis:"35.8%",background:C.dept[3]}}>150~200자 36%</div>
+          <div className="stack-seg" style={{flexBasis:"1.2%",background:"var(--text-subtle)"}}>기타</div>
+        </div>
+      </div>
+      <table className="table" style={{marginTop:14,tableLayout:"fixed"}}>
+        <thead><tr><th>질문 길이 통계</th><th>값</th></tr></thead>
+        <tbody>
+          <tr><td className="strong">평균 · Mean</td><td className="num">146자</td></tr>
+          <tr><td className="strong">중앙값 · Median</td><td className="num">147자</td></tr>
+          <tr><td className="strong">범위 · Min~Max</td><td className="num">21 ~ 268자</td></tr>
+          <tr><td className="strong">표준편차 · Std</td><td className="num">12자</td></tr>
+        </tbody>
+      </table>
+      <p style={{fontSize:12,color:"var(--text-muted)",marginTop:12,lineHeight:1.6}}>표준편차 12자로 <strong>매우 균일</strong> — 100~200자 구간에 집중된 정제된 질문. 중복 제거 후 <strong>111,572건</strong>으로 intent 분류기 학습(정확도 84.7%). AI Hub 수의사 코퍼스(답변 데이터)와 달리 지식iN은 <strong>실제 보호자 질문</strong>이라 챗봇 입력 분포를 대표한다.</p>
+    </div>
+    <div className="card">
+      <div className="card-head"><div><h4 className="card-title">지식iN 커버리지 — 우리 코퍼스가 실제 질문을 얼마나 다루나</h4><p className="card-sub">네이버 지식iN 보호자 질문 8만 건 × 수의사 코퍼스 검색 (top-1 유사도)</p></div></div>
+      <div style={{display:"flex",height:30,borderRadius:6,overflow:"hidden",marginBottom:10}}>
+        <div style={{width:"92.6%",background:"var(--accent)",display:"grid",placeItems:"center",fontSize:12,color:"#fff",fontWeight:700}}>92.6%</div>
+        <div style={{width:"7.0%",background:"oklch(0.72 0.13 75)"}}/>
+        <div style={{width:"0.4%",background:"var(--danger)"}}/>
+      </div>
+      <div style={{display:"flex",gap:18,fontSize:12.5,marginBottom:16}}>
+        <span><b style={{color:"var(--accent)"}}>92.6%</b> 잘 커버 (≥0.7)</span>
+        <span><b style={{color:"oklch(0.6 0.15 75)"}}>7.0%</b> 부분 (0.5~0.7)</span>
+        <span><b style={{color:"var(--danger)"}}>0.4%</b> 갭 (&lt;0.5)</span>
+      </div>
+      <div className="metric-grid" style={{gridTemplateColumns:"repeat(3,1fr)"}}>
+        {[{i:"증상 symptom",v:"95.2%"},{i:"처치 treatment",v:"93.3%"},{i:"응급 emergency",v:"86.3%"}].map((x,j)=>(
+          <div key={j} className="metric"><div className="label">{x.i} 커버율</div><div className="value" style={{fontSize:22}}>{x.v}</div><div className="foot">유사도 ≥ 0.70</div></div>
+        ))}
+      </div>
+      <p style={{fontSize:12,color:"var(--text-muted)",marginTop:12,lineHeight:1.6}}>실제 보호자 질문의 <strong>92.6%</strong>를 수의사 코퍼스(21,604건)로 답변 가능하며, 코퍼스에 유사 사례가 없는 갭은 <strong>0.4%</strong>뿐. 평균 유사도 0.783 · 중앙값 0.794. (지식iN 8만 건 무작위 샘플, seed=42)</p>
+    </div>
+  </>);
+
+  const venomBlock = (<>
+    <div className="card">
+      <div className="card-head"><div><h4 className="card-title">VeNom — 국제 수의 임상용어 표준</h4><p className="card-sub">Veterinary Nomenclature · 전 세계 동물병원 진료기록 표준 증상 코드 (venom.org)</p></div><span className="pill"><Icon name="check" size={11}/>39종 적용</span></div>
+      <p style={{fontSize:13,color:"var(--text-muted)",lineHeight:1.65,marginTop:4}}>VeNom(Veterinary Nomenclature)은 동물 임상 증상을 표준화한 국제 용어 체계다. 보호자의 비정형 구어체 질문을 수의학 표준 용어로 연결해 <strong>검색 정확도</strong>와 <strong>감별진단 보조</strong> 두 측면에서 활용했다.</p>
+      <div className="metric-grid" style={{gridTemplateColumns:"repeat(2,1fr)",marginTop:14}}>
+        <div className="metric"><div className="label">① 구어체 정규화</div><div className="value">34</div><div className="foot">보호자 표현 → VeNom 표준 증상용어</div></div>
+        <div className="metric"><div className="label">② 분산 증상 되묻기</div><div className="value">5</div><div className="foot">다(多)질환 매핑 증상 — 하위 분류</div></div>
+      </div>
+    </div>
+    <div className="card">
+      <div className="card-head"><div><h4 className="card-title">① 구어체 → VeNom 표준용어 정규화</h4><p className="card-sub">비정형 표현을 표준 증상어로 매핑 → BERT 의미 검색 매칭도 향상</p></div></div>
+      <div style={{display:"flex",flexDirection:"column",gap:10,marginTop:6}}>
+        {[
+          [["토해요","토했어","구역질"],"구토","vomiting"],
+          [["콜록콜록","켁켁거려요"],"기침","coughing"],
+          [["물을 많이 마셔요"],"다갈증","polydipsia"],
+          [["부었어요","부어올라요"],"부종","edema"],
+          [["피부가 빨개요","발진"],"피부 발적","erythema"],
+        ].map(([src,std,en],i)=>(
+          <div key={i} style={{display:"flex",alignItems:"center",gap:12,background:"var(--bg-soft)",borderRadius:10,padding:"10px 14px"}}>
+            <div style={{flex:1,display:"flex",flexWrap:"wrap",gap:5}}>
+              {src.map((c,j)=>(<span key={j} style={{fontSize:12,padding:"3px 9px",borderRadius:6,background:"var(--bg-elev)",border:"1px solid var(--border)",color:"var(--text-muted)"}}>“{c}”</span>))}
+            </div>
+            <span style={{color:"var(--accent)",fontSize:18,fontWeight:700,flexShrink:0}}>→</span>
+            <div style={{minWidth:118,textAlign:"right",flexShrink:0}}>
+              <span style={{fontSize:14,fontWeight:700,color:"var(--accent)"}}>{std}</span>
+              <span style={{fontSize:11,color:"var(--text-subtle)",fontFamily:"var(--font-mono)",marginLeft:6}}>{en}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p style={{fontSize:12,color:"var(--text-subtle)",marginTop:12,lineHeight:1.55}}>대표 5종 · 총 34종 매핑. 구어체와 표준어를 모두 검색에 반영해 동의어 불일치로 인한 검색 누락을 줄인다.</p>
+    </div>
+    <div className="card">
+      <div className="card-head"><div><h4 className="card-title">② 분산 증상 되묻기 — 감별진단 보조</h4><p className="card-sub">VeNom presenting complaints 분석에서 단일 증상이 여러 질환에 매핑되는(매칭 분산) 5종 식별 → 하위 분류 추가 질문</p></div></div>
+      <table className="table" style={{marginTop:4,tableLayout:"fixed",width:"100%"}}>
+        <colgroup><col style={{width:84}}/><col style={{width:"40%"}}/><col/></colgroup>
+        <thead><tr><th>증상</th><th>챗봇 되묻기</th><th>임상 의의</th></tr></thead>
+        <tbody>
+          {[
+            ["구토","혈액이 섞여 있었나요?","토혈 → 출혈성 위장질환·이물 감별"],
+            ["기침","호흡 곤란도 함께 있나요?","심장성 vs 호흡기성 감별"],
+            ["다갈증","소변도 많이 보나요?","신부전·당뇨·쿠싱 감별"],
+            ["부종","어느 부위가 부었나요?","복수(심·간) vs 국소 부종 감별"],
+            ["피부 발적","두드러기·발진도 있나요?","알레르기 vs 단순 홍반 감별"],
+          ].map(([s,q,m],i)=>(
+            <tr key={i}><td className="strong" style={{color:"var(--accent)"}}>{s}</td><td style={{color:"var(--text-muted)",fontSize:12.5}}>{q}</td><td style={{color:"var(--text-subtle)",fontSize:12}}>{m}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </>);
+
+  return (
+    <div className="vstack" style={{gap:20}}>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+        {SUBS.map(s=>(
+          <button key={s} onClick={()=>setSub(s)} style={{
+            padding:"8px 16px",borderRadius:9,fontSize:13,cursor:"pointer",
+            border:"1px solid "+(sub===s?"var(--accent)":"var(--border)"),
+            background:sub===s?"var(--accent-soft)":"var(--bg-elev)",
+            color:sub===s?"var(--accent)":"var(--text-muted)",fontWeight:sub===s?600:400,
+            transition:"all .15s",
+          }}>{s}</button>
+        ))}
+      </div>
+
+      {sub==="전체" && (<>
+        <div className="metric-grid">
+          <div className="metric"><div className="label">총 학습·평가 데이터</div><div className="value">136,043</div><div className="foot">AI Hub 21,604 + 지식iN 114,439</div></div>
+          <div className="metric"><div className="label">AI Hub 수의사 코퍼스</div><div className="value">21,604</div><div className="foot">답변 데이터 · 검색 대상</div></div>
+          <div className="metric"><div className="label">네이버 지식iN</div><div className="value">114,439</div><div className="foot">보호자 질문 · 입력/평가</div></div>
+          <div className="metric"><div className="label">VeNom 수의용어</div><div className="value">39</div><div className="foot">구어체 34 + 되묻기 5</div></div>
+        </div>
+        <div className="section-row">
+          <div className="card">
+            <div className="card-head"><div><h4 className="card-title">핵심 성과 종합</h4><p className="card-sub">3개 데이터로 만든 RAG 챗봇 성능</p></div></div>
+            <div className="metric-grid" style={{gridTemplateColumns:"repeat(2,1fr)"}}>
+              <div className="metric"><div className="label">intent 분류 정확도</div><div className="value">84.7%</div><div className="foot">지식iN 11만 학습</div></div>
+              <div className="metric"><div className="label">RAG 근거성</div><div className="value">0.799</div><div className="foot">단독 LLM 0.769 ↑</div></div>
+              <div className="metric"><div className="label">코퍼스 커버리지</div><div className="value">92.6%</div><div className="foot">실제 질문 커버</div></div>
+              <div className="metric"><div className="label">BERT vs TF-IDF</div><div className="value">+6%p</div><div className="foot">Hit@1 (GT 50)</div></div>
+            </div>
+          </div>
+          <div className="card">
+            <div className="card-head"><div><h4 className="card-title">데이터 소스 규모</h4><p className="card-sub">로그 스케일 — 지식iN이 압도적</p></div></div>
+            <PlotlyChart fig={sourceBar} height={260}/>
+          </div>
+        </div>
+        <div className="card">
+          <div className="card-head"><div><h4 className="card-title">데이터 소스 3종 — 역할 분담</h4><p className="card-sub">각 데이터가 파이프라인에서 맡는 역할 (상단 탭에서 소스별 상세 확인)</p></div></div>
+          <div style={{display:"flex",flexDirection:"column",gap:11,fontSize:13,lineHeight:1.6}}>
+            <div style={{borderLeft:"3px solid var(--accent)",paddingLeft:13}}><strong>AI Hub 수의사 Q&A 코퍼스 (21,604)</strong> — 수의사가 작성한 정답 답변. BERT/TF-IDF 검색 대상이자 RAG 근거. 생애주기·진료과·질병 라벨 보유.</div>
+            <div style={{borderLeft:"3px solid var(--color-bert,#6366f1)",paddingLeft:13}}><strong>네이버 지식iN 보호자 질문 (114,439)</strong> — 실제 보호자의 구어체 질문. intent 분류기 학습(84.7%)·RAG 평가·커버리지(92.6%) 입력.</div>
+            <div style={{borderLeft:"3px solid var(--warning)",paddingLeft:13}}><strong>VeNom 국제 수의용어 (39)</strong> — 구어체↔의학용어 정규화 34종 + 모호 증상 5종 되묻기. 검색 정확도 보강.</div>
+          </div>
+        </div>
+      </>)}
+
+      {sub==="AI Hub 코퍼스" && aiHubBlock}
+      {sub==="네이버 지식iN" && naverBlock}
+      {sub==="VeNom" && venomBlock}
     </div>
   );
 }
@@ -9305,6 +9474,7 @@ function ChatPage() {
           <div style={{textAlign:"center"}}>
             <div style={{fontWeight:600,fontSize:17,marginBottom:6}}>AI 수의사 채팅</div>
             <div style={{color:"var(--text-muted)",fontSize:13.5}}>증상·처치·응급 질문을 입력하면 수의사 Q&A 기반으로 답변합니다</div>
+            <div style={{color:"var(--text-subtle)",fontSize:12,marginTop:10,lineHeight:1.6,maxWidth:500}}>ML intent 분류(84.7%) → BERT 의미검색 → Gemini 생성<br/><strong style={{color:"var(--accent)"}}>VeNom</strong> 국제 수의용어 기반: 구어체 34종 정규화 + 모호 증상 5종(구토·기침·다갈증·부종·피부발적) 자동 되묻기</div>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,width:"100%",maxWidth:520}}>
             {EXAMPLES.map(ex=>(
@@ -9426,6 +9596,26 @@ function DiscussionPage() {
             </div>
           ))}
         </div>
+      </div>
+      {/* 왜 RAG인가 */}
+      <div style={card}>
+        <div style={h}>🤔 왜 RAG인가 — 단독 LLM 대비 <span style={{fontSize:11,color:"var(--text-subtle)",fontFamily:"var(--font-mono)"}}>Why RAG</span></div>
+        <p style={{fontSize:12.5,color:"var(--text-muted)",lineHeight:1.6,margin:"0 0 12px"}}>Gemini 단독이 <strong>관련성(0.759)</strong>은 가장 높지만, 이는 질문 어휘를 반복한 표면 점수일 뿐이다. 의료 도메인에서는 다음 세 이유로 RAG가 우월하다.</p>
+        <div style={{display:"flex",flexDirection:"column",gap:9}}>
+          <div style={{borderLeft:"3px solid var(--border-strong)",paddingLeft:12}}>
+            <div style={{fontSize:13,fontWeight:600,color:"var(--text)"}}>1. 관련성의 함정 — ‘정답’이 아니라 ‘질문 따라하기’</div>
+            <div style={{fontSize:12.5,color:"var(--text-muted)",lineHeight:1.55,marginTop:2}}>관련성 = cos(질문, 답변). 단독은 검색 근거가 없어 질문 어휘를 그대로 반복(앵무새) → 표면 점수만 높고 의학적 정확성과 무관하다.</div>
+          </div>
+          <div style={{borderLeft:"3px solid var(--accent)",paddingLeft:12}}>
+            <div style={{fontSize:13,fontWeight:600,color:"var(--text)"}}>2. 근거성은 RAG 우위 — 환각 안전성</div>
+            <div style={{fontSize:12.5,color:"var(--text-muted)",lineHeight:1.55,marginTop:2}}>근거성 RAG 0.799 &gt; 단독 0.769. 단독은 실제 수의학 데이터에서 더 멀다 = <strong>그럴듯하게 지어낼(환각) 위험</strong>이 크다. 의료에서 이는 치명적이다.</div>
+          </div>
+          <div style={{borderLeft:"3px solid var(--accent)",paddingLeft:12}}>
+            <div style={{fontSize:13,fontWeight:600,color:"var(--text)"}}>3. 출처·검증 — 단독엔 없는 강점</div>
+            <div style={{fontSize:12.5,color:"var(--text-muted)",lineHeight:1.55,marginTop:2}}>RAG는 검색된 실제 수의사 Q&A를 <strong>출처로 제시</strong> → 보호자가 검증 가능. 췌장염 사례(아래 오류 분석)처럼 단독의 모호한 답을 실제 근거로 교정한다.</div>
+          </div>
+        </div>
+        <p style={{fontSize:12,color:"var(--text-subtle)",lineHeight:1.55,marginTop:12,fontStyle:"italic"}}>결론: 단독의 높은 관련성은 어휘 반복일 뿐, 정확성·신뢰가 생명인 반려견 의료에서는 ‘그럴듯한 답’보다 ‘검증된 출처 기반 답(RAG)’이 옳다.</p>
       </div>
       {/* Limitations */}
       <div style={card}>
