@@ -8985,6 +8985,8 @@ function EdaPage() {
 function EvalPage() {
   const d = window.APP_DATA;
   const M = d.metrics;
+  const [sub, setSub] = React.useState("검색 평가");
+  const [filter, setFilter] = React.useState("none");
   const deltas = M.overall.map(m=>({k:m.k,delta:+(m.bert-m.tfidf).toFixed(2)}));
   // 검색 모델 레이더 (TF-IDF vs BERT, GT 50건)
   const radarSearch = {
@@ -8994,7 +8996,7 @@ function EvalPage() {
     ],
     layout:{polar:{bgcolor:"rgba(0,0,0,0)", gridshape:"linear", radialaxis:{visible:true,range:[0,65],gridcolor:"rgba(150,150,150,0.25)",tickfont:{size:9}}, angularaxis:{gridcolor:"rgba(150,150,150,0.25)",tickfont:{size:12}}}, showlegend:true, legend:{orientation:"h",y:1.14,x:0.5,xanchor:"center"}, margin:{t:46,l:60,r:60,b:30}, height:340}
   };
-  // 생성 방식 레이더 (3방향, 지식iN 300건 · 간결성=1-길이/400)
+  // 답변 방식 레이더 (4방향, 지식iN 300건 · 간결성=1-길이/400)
   const radarRag = {
     data:[
       {type:"scatterpolar", r:[0.759,0.769,0.36], theta:["관련성","근거성","간결성"], fill:"toself", name:"A.Gemini단독", line:{color:C.dept[3],width:2}, fillcolor:"rgba(107,112,143,0.18)"},
@@ -9004,8 +9006,34 @@ function EvalPage() {
     ],
     layout:{polar:{bgcolor:"rgba(0,0,0,0)", gridshape:"linear", radialaxis:{visible:true,range:[0,0.85],gridcolor:"rgba(150,150,150,0.25)",tickfont:{size:9}}, angularaxis:{gridcolor:"rgba(150,150,150,0.25)",tickfont:{size:12}}}, showlegend:true, legend:{orientation:"h",y:1.14,x:0.5,xanchor:"center"}, margin:{t:46,l:60,r:60,b:30}, height:340}
   };
+  const G4 = ["A.Gemini","B.TF-IDF","C.BERT","D.RAG"];
+  const G4COL = [C.dept[3], C.lcPuppy, C.tfidf, C.bert];
+  const genBars = {
+    data:[
+      {type:"bar", name:"관련성", x:G4, y:[0.759,0.565,0.619,0.682], marker:{color:C.lcPuppy}},
+      {type:"bar", name:"근거성", x:G4, y:[0.769,0.723,0.810,0.799], marker:{color:C.bert}},
+    ],
+    layout:{barmode:"group", yaxis:{title:"점수",range:[0,1]}, margin:{t:30,l:50,r:20,b:40}, height:300, legend:{orientation:"h",y:1.16,x:0.5,xanchor:"center"}}
+  };
+  const genScatter = {
+    data:[{type:"scatter", mode:"markers+text",
+      x:[0.759,0.565,0.619,0.682], y:[0.769,0.723,0.810,0.799],
+      text:G4, textposition:"top center", textfont:{size:11},
+      marker:{size:[20,18,18,30], color:G4COL, opacity:0.85, line:{width:1.5,color:"#fff"}}}],
+    layout:{xaxis:{title:"관련성 (질문 적합도)"}, yaxis:{title:"근거성 (데이터 근접도)"}, margin:{t:20,l:56,r:30,b:46}, height:320, showlegend:false}
+  };
+  const genLen = {
+    data:[{type:"bar", x:G4, y:[256,336,385,183], marker:{color:G4COL}, text:["256","336","385","183"], textposition:"outside"}],
+    layout:{yaxis:{title:"평균 답변 길이(자)",range:[0,440]}, margin:{t:26,l:50,r:20,b:40}, height:280, showlegend:false}
+  };
   return (
     <div className="vstack" style={{gap:20}}>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+        {["검색 평가","답변 비교 (4방향)"].map(s=>(
+          <button key={s} onClick={()=>setSub(s)} style={{padding:"8px 16px",borderRadius:9,fontSize:13,cursor:"pointer",border:"1px solid "+(sub===s?"var(--accent)":"var(--border)"),background:sub===s?"var(--accent-soft)":"var(--bg-elev)",color:sub===s?"var(--accent)":"var(--text-muted)",fontWeight:sub===s?600:400,transition:"all .15s"}}>{s}</button>
+        ))}
+      </div>
+      {sub==="검색 평가" && (<>
       <div className="callout">
         <span className="ico"><Icon name="trending" size={16}/></span>
         <div>
@@ -9026,27 +9054,9 @@ function EvalPage() {
           </div>
         ))}
       </div>
-      <div className="section-row">
-        <div className="card">
-          <div className="card-head"><div><h4 className="card-title">검색 모델 레이더 — TF-IDF vs BERT</h4><p className="card-sub">Hit@1/3/5·MAP@5 (GT 50건) — BERT가 전 지표 우위·동률</p></div></div>
-          <PlotlyChart fig={radarSearch} height={330}/>
-        </div>
-        <div className="card">
-          <div className="card-head"><div><h4 className="card-title">생성 방식 레이더 — 4방향</h4><p className="card-sub">관련성·근거성·간결성 (지식iN 300건) — RAG가 균형</p></div></div>
-          <PlotlyChart fig={radarRag} height={330}/>
-        </div>
-      </div>
       <div className="card">
-        <div className="card-head"><div><h4 className="card-title">모델별 종합 비교</h4><p className="card-sub">검색 모델(GT 50건)·생성 방식(지식iN 300건)을 역할·핵심 지표로 비교</p></div></div>
-        <table className="table" style={{marginTop:4}}>
-          <thead><tr><th style={{textAlign:"left"}}>모델 / 방식</th><th style={{textAlign:"left"}}>역할</th><th style={{textAlign:"left"}}>핵심 지표</th><th style={{textAlign:"left"}}>특징</th></tr></thead>
-          <tbody>
-            <tr><td className="strong">TF-IDF</td><td>검색</td><td>Hit@1 18% · MAP 9.7%</td><td style={{color:"var(--text-muted)"}}>키워드 매칭 baseline</td></tr>
-            <tr><td className="strong" style={{color:C.bert}}>BERT ★</td><td>검색</td><td>Hit@1 24% (+6%p) · MAP 12.9%</td><td style={{color:"var(--text-muted)"}}>의미 매칭 — 구어체 우위</td></tr>
-            <tr><td className="strong">Gemini 단독</td><td>생성</td><td>관련성 0.759 · 근거성 0.769</td><td style={{color:"var(--text-muted)"}}>출처 없음 · 환각 위험</td></tr>
-            <tr><td className="strong" style={{color:C.bert}}>RAG ★</td><td>검색+생성</td><td>관련성 0.682 · 근거성 0.799</td><td style={{color:"var(--text-muted)"}}>근거+출처 — 메인 시스템</td></tr>
-          </tbody>
-        </table>
+        <div className="card-head"><div><h4 className="card-title">검색 모델 레이더 — TF-IDF vs BERT</h4><p className="card-sub">Hit@1/3/5·MAP@5 (GT 50건) — BERT가 전 지표 우위·동률</p></div></div>
+        <PlotlyChart fig={radarSearch} height={330}/>
       </div>
       {(() => {
         const hitOnly = M.overall.filter(m=>m.k.startsWith("Hit"));
@@ -9146,7 +9156,6 @@ function EvalPage() {
         fa.forEach(r=>counts[r.status]++);
         const STATUS = {both:"양쪽 성공", tfidf:"TF-IDF만 성공", bert:"BERT만 성공", none:"양쪽 실패"};
         const COLOR  = {both:"var(--success)", tfidf:"#E07856", bert:"#3A9188", none:"var(--error,#e57373)"};
-        const [filter, setFilter] = React.useState("none");
         const rows = filter==="all" ? fa : fa.filter(r=>r.status===filter);
         return (
           <div className="card">
@@ -9223,6 +9232,45 @@ function EvalPage() {
         </div>
         <p style={{fontSize:12,color:"var(--text-muted)",marginTop:12,lineHeight:1.6}}>GT 50건(의미적으로 어려운 쿼리)에선 BERT가 뚜렷한 우위(Hit@1 +6%p)지만, 전체 2,399건 평균에선 McNemar p=0.46·Bootstrap CI가 0을 포함해 <strong>통계적 유의차 없음</strong>. → BERT 우위는 구어체·희귀 증상 등 특정 질의에 집중되며, 쉬운 질의에선 두 방법이 대등하다.</p>
       </div>
+      </>)}
+      {sub==="답변 비교 (4방향)" && (<>
+      <div className="callout">
+        <span className="ico"><Icon name="trending" size={16}/></span>
+        <div>
+          <div className="t">RAG가 근거성에서 단독 LLM 우위 — 환각 안전성·간결성 균형</div>
+          <div className="d">지식iN 실제 질문 300건 기준. 관련성(질문↔답변)·근거성(답변↔수의사 데이터)·답변 길이로 4방향 비교. TF-IDF 검색이 모든 지표 최하, RAG가 근거성(0.799)·간결성(183자)에서 균형.</div>
+        </div>
+      </div>
+      <div className="card">
+        <div className="card-head"><div><h4 className="card-title">답변 방식 레이더 — 4방향</h4><p className="card-sub">관련성·근거성·간결성 (지식iN 300건) — RAG가 균형</p></div></div>
+        <PlotlyChart fig={radarRag} height={330}/>
+      </div>
+      <div className="section-row">
+        <div className="card">
+          <div className="card-head"><div><h4 className="card-title">관련성·근거성 비교 — 4방향</h4><p className="card-sub">방식별 두 지표 그룹 막대</p></div></div>
+          <PlotlyChart fig={genBars} height={300}/>
+        </div>
+        <div className="card">
+          <div className="card-head"><div><h4 className="card-title">관련성 × 근거성 산점도</h4><p className="card-sub">우상단일수록 우수 — RAG(D)가 균형점, 버블 큼</p></div></div>
+          <PlotlyChart fig={genScatter} height={320}/>
+        </div>
+      </div>
+      <div className="card">
+        <div className="card-head"><div><h4 className="card-title">평균 답변 길이 — 4방향</h4><p className="card-sub">RAG(183자)가 가장 간결 · 검색 원본(B·C)이 김</p></div></div>
+        <PlotlyChart fig={genLen} height={280}/>
+      </div>
+      <div className="card">
+        <div className="card-head"><div><h4 className="card-title">모델별 종합 비교</h4><p className="card-sub">검색 모델(GT 50건)·생성 방식(지식iN 300건)을 역할·핵심 지표로 비교</p></div></div>
+        <table className="table" style={{marginTop:4}}>
+          <thead><tr><th style={{textAlign:"left"}}>모델 / 방식</th><th style={{textAlign:"left"}}>역할</th><th style={{textAlign:"left"}}>핵심 지표</th><th style={{textAlign:"left"}}>특징</th></tr></thead>
+          <tbody>
+            <tr><td className="strong">TF-IDF</td><td>검색</td><td>Hit@1 18% · MAP 9.7%</td><td style={{color:"var(--text-muted)"}}>키워드 매칭 baseline</td></tr>
+            <tr><td className="strong" style={{color:C.bert}}>BERT ★</td><td>검색</td><td>Hit@1 24% (+6%p) · MAP 12.9%</td><td style={{color:"var(--text-muted)"}}>의미 매칭 — 구어체 우위</td></tr>
+            <tr><td className="strong">Gemini 단독</td><td>생성</td><td>관련성 0.759 · 근거성 0.769</td><td style={{color:"var(--text-muted)"}}>출처 없음 · 환각 위험</td></tr>
+            <tr><td className="strong" style={{color:C.bert}}>RAG ★</td><td>검색+생성</td><td>관련성 0.682 · 근거성 0.799</td><td style={{color:"var(--text-muted)"}}>근거+출처 — 메인 시스템</td></tr>
+          </tbody>
+        </table>
+      </div>
       {/* RAG 효과 검증 — 지식iN 대규모 평가 */}
       <div className="card">
         <div className="card-head"><div><h4 className="card-title">RAG 효과 검증 — 검색 결합의 정량 비교</h4><p className="card-sub">지식iN 실제 질문 기준 · 관련성(질문 적합도) · 근거성(수의사 데이터 근접도)</p></div></div>
@@ -9247,6 +9295,7 @@ function EvalPage() {
         ))}
         <p style={{fontSize:12,color:"var(--text-muted)",marginTop:8,lineHeight:1.6}}>RAG가 <strong>근거성에서 단독 LLM 우위</strong>(검색이 실제 수의학 지식에 근접). 관련성은 단독이 질문 어휘를 반복해 표면 점수가 높으나, 내용 정확성은 근거성·정성 분석에서 드러남. <strong>지식iN 300건 기준</strong> (표본 12→150→300건 모두 동일 결론 — 환각 judge 제외, 관련성·근거성).</p>
       </div>
+      </>)}
     </div>
   );
 }
@@ -9372,9 +9421,9 @@ const NAV_ITEMS = [
 ];
 const pageDesc = {
   search:"보호자가 입력한 증상으로 21,604건 수의사 Q&A 코퍼스에서 유사 사례를 검색합니다.",
-  data:"AI Hub 반려견 말뭉치의 규모와 분포를 요약합니다.",
-  eda:"생애주기·진료과·질병 차원의 분포와 길이 통계를 시각화합니다.",
-  eval:"TF-IDF와 Sentence-BERT의 Hit@k, MAP@5 성능을 정량 비교합니다.",
+  data:"AI Hub 코퍼스·네이버 지식iN·VeNom 3개 데이터 소스의 규모와 분포를 요약합니다.",
+  eda:"AI Hub(생애주기·진료과·질병)와 네이버 지식iN(유사도·키워드·교차 분석)의 탐색 분석을 시각화합니다.",
+  eval:"검색 모델(TF-IDF·BERT)의 Hit@k·MAP@5와 답변 비교 (4방향)(Gemini단독·검색·RAG)의 관련성·근거성을 정량 비교합니다.",
   matching:"평가셋 50개 쿼리별로 각 모델이 반환한 top-5 문서를 탐색합니다.",
   chat:"증상·처치·응급 질문을 입력하면 수의사 Q&A를 참고해 AI가 답변합니다.",
   discussion:"실험 결과 해석과 한계·오류 분석·향후 과제를 정리합니다.",
