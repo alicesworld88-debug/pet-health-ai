@@ -240,6 +240,26 @@ def build_sample_results(dl: DataLoader, suggestions: list[str] | None = None,
     return results
 
 
+def build_naver(n_per_intent: int = 12) -> dict:
+    """네이버 지식iN 실제 보호자 질문 — intent별 분포·샘플 (건강 상담 탭)."""
+    from pathlib import Path
+    csv = Path(__file__).resolve().parent.parent / "data" / "external" / "naver_questions.csv"
+    df = pd.read_csv(csv)
+    ko = {"symptom": "증상", "emergency": "응급", "treatment": "처치"}
+    counts = df["intent"].value_counts().to_dict()
+    samples = {}
+    for it in ("symptom", "emergency", "treatment"):
+        sub = df.loc[df["intent"] == it, "query"].dropna()
+        sub = sub[sub.str.len().between(15, 90)]
+        picked = sub.sample(min(n_per_intent, len(sub)), random_state=42)
+        samples[ko[it]] = [str(s)[:88] for s in picked.tolist()]
+    return {
+        "total": int(len(df)),
+        "counts": {ko[k]: int(counts.get(k, 0)) for k in ("symptom", "emergency", "treatment")},
+        "samples": samples,
+    }
+
+
 def build_app_data(dl: DataLoader, include_sample_search: bool = True) -> dict:
     """APP_DATA 전체 빌드 — run_dashboard.py 에서 호출."""
     print("  📡 매처 로드 중 (TF-IDF + BERT)...")
@@ -267,6 +287,7 @@ def build_app_data(dl: DataLoader, include_sample_search: bool = True) -> dict:
         },
         "inferTime": {"tfidf": tfidf_ms, "bert": bert_ms},
         "sampleSuggestions": SAMPLE_SUGGESTIONS,
+        "naver":        build_naver(),
         "results":      {"bert": demo_bert, "tfidf": demo_tfidf},
         "evalQueries":  build_eval_queries(dl, tfidf=tfidf, bert=bert),
         "failAnalysis": build_fail_analysis(dl),

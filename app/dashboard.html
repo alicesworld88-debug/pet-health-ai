@@ -7882,6 +7882,8 @@ const { useState, useEffect, useRef } = React;
 
 function SearchPage({ settings, setSettings }) {
   const data = window.APP_DATA;
+  const NaverPanel = window.NaverQuestionPanel;
+  const [sub, setSub] = useState("AI Hub 답변 검색");
   const [query, setQuery] = useState("");
   const [searchState, setSearchState] = useState("empty");
   const [openIdx, setOpenIdx] = useState({ bert: 0, tfidf: null });
@@ -7906,7 +7908,15 @@ function SearchPage({ settings, setSettings }) {
   const resultsCount = settings.topK;
 
   return (
-    <div className="search-layout">
+    <div className="vstack" style={{gap:14}}>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+        {["AI Hub 답변 검색","네이버 보호자 질문"].map(s=>(
+          <button key={s} onClick={()=>setSub(s)} style={{padding:"8px 16px",borderRadius:9,fontSize:13,cursor:"pointer",border:"1px solid "+(sub===s?"var(--accent)":"var(--border)"),background:sub===s?"var(--accent-soft)":"var(--bg-elev)",color:sub===s?"var(--accent)":"var(--text-muted)",fontWeight:sub===s?600:400,transition:"all .15s"}}>{s}</button>
+        ))}
+      </div>
+      {sub==="네이버 보호자 질문" && NaverPanel && <NaverPanel/>}
+      {sub==="AI Hub 답변 검색" && (
+      <div className="search-layout">
       <div className="col-main">
         <div className="search-panel">
           <div className="search-input-wrap">
@@ -7973,7 +7983,7 @@ function SearchPage({ settings, setSettings }) {
               {(settings.mode==="compare"||settings.mode==="bert")&&(
                 <div className="model-col bert">
                   <div className="model-col-head">
-                    <div className="left"><span className="swatch"/><span>Sentence-BERT</span><span className="subtle">ko-sroberta · 의미 기반</span></div>
+                    <div className="left"><span className="swatch"/><span>Sentence-BERT</span><span className="subtle">ko-sroberta · 한국어 의미 기반</span></div>
                     <span className="subtle">top-{resultsCount}</span>
                   </div>
                   {currentResults.bert.slice(0,resultsCount).map((r,i)=>(
@@ -8014,12 +8024,14 @@ function SearchPage({ settings, setSettings }) {
           <div className="setting-group">
             <div className="g-label">모델 정보</div>
             <div style={{fontSize:11.5,lineHeight:1.7,color:"var(--text-muted)",fontFamily:"var(--font-mono)"}}>
-              <div>· TF-IDF (sklearn)</div><div>· ko-sroberta-multitask</div>
+              <div>· TF-IDF (sklearn)</div><div>· ko-sroberta-multitask</div><div style={{color:"var(--text-subtle)"}}>　(KLUE 기반 한국어 특화 SBERT)</div>
               <div>· corpus: 19,205 docs</div><div>· eval: 2,399 docs</div>
             </div>
           </div>
         </div>
       </aside>
+    </div>
+      )}
     </div>
   );
 }
@@ -9053,7 +9065,7 @@ function EvalPage() {
         <span className="ico"><Icon name="trending" size={16}/></span>
         <div>
           <div className="t">BERT가 Hit@1·Hit@3·MAP@5에서 우위, Hit@5는 동률</div>
-          <div className="d">검증셋 50개 쿼리 (자견 17 · 성견 17 · 노령견 16) 기준. 평가 방식: <strong>소프트 매치(Soft Match)</strong> — top-k 결과 중 쿼리와 동일한 disease·lifeCycle 문서가 하나라도 포함되면 hit. 정확한 문서 재현이 아닌 의미적 유사 문서 검색이 목적이므로 이 방식을 채택.</div>
+          <div className="d">검증셋 50개 쿼리 (자견 17 · 성견 17 · 노령견 16) 기준. 평가 방식: <strong>소프트 매치(Soft Match)</strong> — top-k 결과 중 쿼리와 동일한 disease·lifeCycle 문서가 하나라도 포함되면 hit. 정확한 문서 재현이 아닌 의미적 유사 문서 검색이 목적이므로 이 방식을 채택. <strong>질병 분포</strong>는 코퍼스 전체를 그대로 반영 — 기타 74%(코퍼스 76.9%와 유사)·진료과 내과30/외과8/치과6/피부3/안3으로, Long-tail '기타'의 과대·과소표집 없이 자연 분포를 유지했다.</div>
         </div>
       </div>
       <div className="metric-grid">
@@ -9095,7 +9107,7 @@ function EvalPage() {
       })()}
       <div className="section-row">
         <div className="card">
-          <div className="card-head"><div><h4 className="card-title">전체 성능 비교</h4><p className="card-sub">TF-IDF vs Sentence-BERT (ko-sroberta-multitask)</p></div></div>
+          <div className="card-head"><div><h4 className="card-title">전체 성능 비교</h4><p className="card-sub">TF-IDF vs Sentence-BERT (ko-sroberta-multitask · 한국어 특화)</p></div></div>
           <div className="group-bars">
             {M.overall.map(m=>{
               const scale=(v)=>(v/70)*100;
@@ -9126,7 +9138,7 @@ function EvalPage() {
         </div>
       </div>
       <div className="card">
-        <div className="card-head"><div><h4 className="card-title">생애주기별 Hit@5</h4><p className="card-sub">성견 구간에서만 TF-IDF가 우위 — 키워드 중심 질의 분포로 추정</p></div></div>
+        <div className="card-head"><div><h4 className="card-title">생애주기별 Hit@5</h4><p className="card-sub">성견 구간에서만 TF-IDF가 우위 — 명사비율 분석상 표본 효과로 추정(아래)</p></div></div>
         <div className="group-bars">
           {M.byLifecycle.map(l=>{
             const winner=l.bert>l.tfidf?"bert":"tfidf";
@@ -9141,6 +9153,7 @@ function EvalPage() {
             );
           })}
         </div>
+        <p style={{fontSize:11.5,color:"var(--text-muted)",marginTop:10,lineHeight:1.6}}>※ '성견=키워드 중심' 가설 검증: 형태소 분석(Okt · 각 150쿼리) 결과 명사 비율은 자견 42.6% · 성견 43.3% · 노령견 43.3%로 <strong>생애주기 간 차이가 미미</strong>(성견−자견 +0.7%p). 성견 구간 TF-IDF 우위는 키워드 분포 차이보다 <strong>표본(n=17) 변동</strong>일 가능성이 크다.</p>
       </div>
       {d.simScores && d.simScores.tfidf && d.simScores.tfidf.length > 0 && (() => {
         const tf = d.simScores.tfidf, bt = d.simScores.bert;
@@ -9236,6 +9249,17 @@ function EvalPage() {
           <p style={{fontSize:12,color:"var(--text-muted)",marginTop:12,lineHeight:1.6}}>귀무가설(H₀): 진료과 간 질문 길이 평균이 동일하다 → 기각 (p ≈ 0). 내과·외과 질문이 피부과·안과 대비 유의하게 길다.</p>
         </div>
       )}
+      {/* GT 50건 Hit@1 통계 검정 — 교수 피드백 반영 (n=50 우위의 유의성) */}
+      <div className="card">
+        <div className="card-head"><div><h4 className="card-title">GT 50건 Hit@1 통계 검정 — TF-IDF vs BERT</h4><p className="card-sub">평가셋 자체(n=50)의 +6%p 우위가 통계적으로 유의한지 McNemar·paired bootstrap 검정</p></div></div>
+        <div className="metric-grid" style={{gridTemplateColumns:"repeat(4,1fr)"}}>
+          <div className="metric"><div className="label">Hit@1 (TF-IDF→BERT)</div><div className="value" style={{fontSize:19}}>18% → 24%</div><div className="foot">+6%p · 방향: BERT</div></div>
+          <div className="metric"><div className="label">McNemar χ²</div><div className="value" style={{fontSize:22}}>0.27</div><div className="foot">p = 0.61</div></div>
+          <div className="metric"><div className="label">Bootstrap 95% CI</div><div className="value" style={{fontSize:14,lineHeight:1.35}}>[-10,<br/>+20]%p</div><div className="foot">2,000회 · 0 포함</div></div>
+          <div className="metric"><div className="label">결론</div><div className="value" style={{fontSize:13,lineHeight:1.35}}>n=50 우위<br/>유의성 미확보</div><div className="foot">p ≥ 0.05</div></div>
+        </div>
+        <p style={{fontSize:12,color:"var(--text-muted)",marginTop:12,lineHeight:1.6}}>불일치 쌍: BERT만 적중 9건 · TF-IDF만 적중 6건 (동시 적중 3 · 동시 실패 32). McNemar p=0.61·bootstrap CI가 0을 포함 → <strong>n=50에서 +6%p 차이는 통계적으로 유의하지 않음</strong>. BERT의 방향적 우위는 분명하나 표본이 작아, 결론은 실패 케이스 정성 분류와 함께 해석해야 한다. <span style={{color:"var(--text-subtle)"}}>(평가셋 확대가 향후 고도화 과제)</span></p>
+      </div>
       {/* 전체 검증셋 2,399건 통계 검정 (노트북 08) */}
       <div className="card">
         <div className="card-head"><div><h4 className="card-title">전체 검증셋 통계 검정 — TF-IDF vs BERT (2,399건)</h4><p className="card-sub">GT 50건이 아닌 전체 검증셋 기준 + 통계적 유의성 검정 (McNemar · Bootstrap)</p></div></div>
@@ -9245,7 +9269,7 @@ function EvalPage() {
           <div className="metric"><div className="label">Bootstrap 95% CI</div><div className="value" style={{fontSize:14,lineHeight:1.35}}>[-1.3%,<br/>+3.1%]</div><div className="foot">2,000회 · 0 포함</div></div>
           <div className="metric"><div className="label">결론</div><div className="value" style={{fontSize:13,lineHeight:1.35}}>전체 평균<br/>유의차 없음</div><div className="foot">p ≥ 0.05</div></div>
         </div>
-        <p style={{fontSize:12,color:"var(--text-muted)",marginTop:12,lineHeight:1.6}}>GT 50건(의미적으로 어려운 쿼리)에선 BERT가 뚜렷한 우위(Hit@1 +6%p)지만, 전체 2,399건 평균에선 McNemar p=0.46·Bootstrap CI가 0을 포함해 <strong>통계적 유의차 없음</strong>. → BERT 우위는 구어체·희귀 증상 등 특정 질의에 집중되며, 쉬운 질의에선 두 방법이 대등하다.</p>
+        <p style={{fontSize:12,color:"var(--text-muted)",marginTop:12,lineHeight:1.6}}>GT 50건에선 BERT가 방향적 우위(Hit@1 +6%p)이나 <strong>통계적 유의성은 미확보</strong>(McNemar p=0.61), 전체 2,399건 평균에서도 McNemar p=0.46·Bootstrap CI가 0을 포함해 <strong>유의차 없음</strong>. → BERT 우위는 구어체·희귀 증상 등 특정 질의에 집중되며, 쉬운 질의에선 두 방법이 대등하다. 평가셋 확대 시 차이의 유의성 재검증이 필요하다.</p>
       </div>
       {/* 전체 검증셋 2,399건 — 생애주기·진료과별 Hit@1 세분 (노트북 08) */}
       <div className="section-row">
@@ -9325,6 +9349,59 @@ function EvalPage() {
     </div>
   );
 }
+
+function NaverQuestionPanel() {
+  const nav = (window.APP_DATA && window.APP_DATA.naver) || {counts:{},samples:{},total:0};
+  const [it, setIt] = React.useState("증상");
+  const intents = [
+    {k:"증상", color:C.dept[0]},
+    {k:"응급", color:C.tfidf},
+    {k:"처치", color:C.bert},
+  ];
+  const samples = (nav.samples && nav.samples[it]) || [];
+  const distBar = {
+    data:[{type:"bar", orientation:"h",
+      x:intents.map(x=>nav.counts[x.k]||0).reverse(),
+      y:intents.map(x=>x.k).reverse(),
+      marker:{color:intents.map(x=>x.color).reverse(), opacity:0.4, line:{width:2, color:intents.map(x=>x.color).reverse()}},
+      text:intents.map(x=>(nav.counts[x.k]||0).toLocaleString()+"건").reverse(), textposition:"outside", cliponaxis:false, textfont:{size:11}}],
+    layout:{margin:{t:8,l:46,r:64,b:20}, height:150, xaxis:{visible:false}, yaxis:{tickfont:{size:12}}}
+  };
+  return (
+    <div className="vstack" style={{gap:14}}>
+      <div className="callout">
+        <span className="ico"><Icon name="bot" size={16}/></span>
+        <div>
+          <div className="t">네이버 지식iN 실제 보호자 질문 — 챗봇의 실제 입력 분포</div>
+          <div className="d">보호자가 직접 올린 {(nav.total||0).toLocaleString()}건의 구어체 질문을 intent(증상·응급·처치)로 분류·라우팅. 이 질문들이 <strong>AI Hub 수의사 답변 검색의 실제 입력</strong>이며, 그중 92.6%가 코퍼스로 답변 가능(커버리지). 검색 결과(답변)는 AI Hub, 입력(질문)은 네이버 지식iN으로 역할이 나뉜다.</div>
+        </div>
+      </div>
+      <div className="section-row">
+        <div className="card" style={{flex:"0 0 300px"}}>
+          <div className="card-head"><div><h4 className="card-title">intent 분포</h4><p className="card-sub">총 {(nav.total||0).toLocaleString()}건 · 질문 의도 3종</p></div></div>
+          <PlotlyChart fig={distBar} height={150}/>
+        </div>
+        <div className="card">
+          <div className="card-head"><div><h4 className="card-title">실제 보호자 질문 예시</h4><p className="card-sub">intent를 선택해 네이버 지식iN 실제 질문을 확인 (랜덤 샘플)</p></div></div>
+          <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+            {intents.map(x=>(
+              <button key={x.k} onClick={()=>setIt(x.k)} style={{padding:"6px 14px",borderRadius:20,fontSize:12.5,cursor:"pointer",border:"1px solid "+(it===x.k?x.color:"var(--border)"),background:it===x.k?x.color:"var(--bg-elev)",color:it===x.k?"#fff":"var(--text-muted)",fontWeight:it===x.k?600:400,transition:"all .15s"}}>{x.k} · {(nav.counts[x.k]||0).toLocaleString()}</button>
+            ))}
+          </div>
+          <div className="vstack" style={{gap:8}}>
+            {samples.map((q,i)=>(
+              <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"9px 12px",borderRadius:9,background:"var(--bg-soft)",border:"1px solid var(--border)"}}>
+                <span style={{fontSize:11,fontFamily:"var(--font-mono)",color:"var(--text-subtle)",marginTop:2}}>{String(i+1).padStart(2,"0")}</span>
+                <span style={{fontSize:12.5,lineHeight:1.5,color:"var(--text)"}}>{q}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+window.NaverQuestionPanel = NaverQuestionPanel;
 
 const lifeMap = { puppy:"자견", adult:"성견", senior:"노령견" };
 
@@ -9522,7 +9599,7 @@ const ACCENT_PRESETS = [
   {name:"Indigo",h:258},{name:"Violet",h:290},{name:"Blue",h:245},{name:"Teal",h:190},{name:"Rose",h:355}
 ];
 const NAV_ITEMS = [
-  {id:"search",  num:"01",ko:"증상 검색",     icon:"search"},
+  {id:"search",  num:"01",ko:"건강 상담",     icon:"search"},
   {id:"data",    num:"02",ko:"데이터 현황",   icon:"data"},
   {id:"eda",     num:"03",ko:"EDA",           icon:"eda"},
   {id:"eval",    num:"04",ko:"모델 평가",     icon:"eval"},
@@ -9531,7 +9608,7 @@ const NAV_ITEMS = [
   {id:"discussion",num:"07",ko:"논의 & 한계",  icon:"eval"},
 ];
 const pageDesc = {
-  search:"보호자가 입력한 증상으로 21,604건 수의사 Q&A 코퍼스에서 유사 사례를 검색합니다.",
+  search:"증상·응급·처치 질문을 다룹니다. AI Hub 답변 검색(21,604건 수의사 Q&A)과 네이버 지식iN 실제 보호자 질문(114,439건·intent별)을 서브탭으로 제공합니다.",
   data:"AI Hub 코퍼스·네이버 지식iN·VeNom 3개 데이터 소스의 규모와 분포를 요약합니다.",
   eda:"AI Hub(생애주기·진료과·질병)와 네이버 지식iN(유사도·키워드·교차 분석)의 탐색 분석을 시각화합니다.",
   eval:"검색 모델(TF-IDF·BERT)의 Hit@k·MAP@5와 답변 비교 (4방향)(Gemini단독·검색·RAG)의 관련성·근거성을 정량 비교합니다.",
@@ -9539,7 +9616,7 @@ const pageDesc = {
   chat:"증상·처치·응급 질문을 입력하면 수의사 Q&A를 참고해 AI가 답변합니다.",
   discussion:"실험 결과 해석과 한계·오류 분석·향후 과제를 정리합니다.",
 };
-const pageEn = {search:"Search",data:"Data",eda:"Explore",eval:"Evaluation",matching:"Matches",chat:"AI Chat",discussion:"Discussion & Limitations"};
+const pageEn = {search:"Consult",data:"Data",eda:"Explore",eval:"Evaluation",matching:"Matches",chat:"AI Chat",discussion:"Discussion & Limitations"};
 
 function ModelStatus() {
   const d = window.APP_DATA || {};
@@ -9873,11 +9950,12 @@ function DiscussionPage() {
   ];
   const limitations = [
     {t:"1. 환각율 측정의 한계", d:"LLM-as-judge가 RAG의 종합·재구성 답변을 '근거 없음'으로 오판. 표본을 12→150건으로 늘려도 환각율 역전(RAG 28% vs 단독 31.6%)이 유지됨 → 측정 지표 자체의 한계."},
-    {t:"2. 전체 평균의 통계적 유의성", d:"수동 GT 50건·채팅 4방향 비교에서는 BERT가 우위지만, 전체 2,399건 평균에선 McNemar p=0.46으로 차이가 작음 → BERT 우위는 구어체·희귀 증상 등 의미적으로 어려운 질의에 집중되며, 전체 평균 유의성은 추가 검증이 필요."},
+    {t:"2. 우위의 통계적 유의성", d:"BERT가 방향적 우위지만, GT 50건 자체도 McNemar p=0.61(bootstrap CI[-10,+20]%p, 0 포함)로 유의성 미확보이고 전체 2,399건 평균도 p=0.46 → BERT 우위는 구어체·희귀 증상 등 의미적으로 어려운 질의에 집중되며, 평가셋 확대를 통한 유의성 재검증이 필요."},
     {t:"3. 소표본 편향", d:"생애주기별 분석에서 자견 n=17 등 소표본 → '자견 BERT +17.6%p' 같은 결론이 불안정. 전체 데이터(n=808)에선 편향 완화 확인."},
     {t:"4. 코사인 유사도의 한계", d:"의미 유사도가 곧 정확성은 아님. 그럴듯하지만 사실과 다른 답변도 높은 코사인 점수를 받을 수 있음."},
     {t:"5. 평가 지표의 순환성", d:"BERT로 검색하고 BERT 임베딩으로 근거성을 측정 → 자기 모델에 유리할 여지. 관련성(질문↔답변)은 검색기와 독립적이라 부분 보완."},
     {t:"6. 지식iN 정답 부재", d:"AI Hub 코퍼스 평가용 GT 50건은 구축했으나(Hit@k·MAP용), 지식iN 질문에는 정답이 없어 RAG는 모델 간 상대 비교만 가능."},
+    {t:"7. BERT 추론비용 대비 효익", d:"BERT는 ko-sroberta 임베딩 추론·임베딩 행렬 적재로 TF-IDF(키워드) 대비 검색 지연·메모리가 크다(건강 상담 탭 추론시간 배지 참조). Hit@5가 동률이고 전체 평균 유의차가 없는 점을 고려하면, BERT 채택은 Top-1~3 정밀 매칭이 중요한 경우에 한해 정당화되며, 단순 후보군(Top-5) 확보엔 경량 TF-IDF로도 충분하다."},
   ];
   const errorCase = {
     q:"췌장염 → 하반신 마비 인과 질문",
