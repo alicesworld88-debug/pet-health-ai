@@ -8881,15 +8881,18 @@ function EdaPage() {
     layout:{xaxis:{title:"언급 횟수"}, margin:{t:16,l:78,r:48,b:42}, height:300, showlegend:false}
   };
   // 네이버: intent × 증상 키워드 교차 히트맵 (데이터마이닝)
+  const intentZ = [[6.7,6.3,4.3,3.4,2.9,0.6,0.1,0.7,5.8,15.3,1.7,2.4],[8.1,6.4,1.8,0.9,31.1,6.4,6.2,5.0,3.8,14.0,0.5,2.1],[2.7,2.2,1.2,1.1,2.3,0.2,0.3,0.2,27.5,26.5,9.6,0.8]];
+  const intentX = ["구토","설사","식욕","기침","먹었","초콜릿","삼켰","중독","수술","약","중성화","발작"];
+  const intentY = ["증상","응급","처치"];
+  const intentMax = Math.max(...intentZ.flat());
+  const intentAnns = [];
+  intentZ.forEach((row,i)=>row.forEach((v,j)=>intentAnns.push({x:intentX[j],y:intentY[i],text:String(v),showarrow:false,font:{size:10,color:(v/intentMax)>0.5?"#FFFFFF":"#134E4A",family:"'Pretendard Variable','Inter',sans-serif"}})));
   const intentHeat = {
-    data:[{type:"heatmap",
-      z:[[6.7,6.3,4.3,3.4,2.9,0.6,0.1,0.7,5.8,15.3,1.7,2.4],[8.1,6.4,1.8,0.9,31.1,6.4,6.2,5.0,3.8,14.0,0.5,2.1],[2.7,2.2,1.2,1.1,2.3,0.2,0.3,0.2,27.5,26.5,9.6,0.8]],
-      x:["구토","설사","식욕","기침","먹었","초콜릿","삼켰","중독","수술","약","중성화","발작"],
-      y:["증상","응급","처치"],
-      colorscale:[[0,"#F2EFEA"],[0.25,"#A9CFC8"],[1,"#3A9188"]],
-      texttemplate:"%{z}", textfont:{size:10}, hovertemplate:"%{y} · %{x}: %{z}%<extra></extra>",
-      colorbar:{title:"%",thickness:12,len:0.9}}],
-    layout:{xaxis:{side:"bottom"}, yaxis:{autorange:"reversed"}, margin:{t:10,l:54,r:10,b:54}, height:230}
+    data:[{type:"heatmap", z:intentZ, x:intentX, y:intentY,
+      colorscale:[[0,"#CCFBF1"],[0.2,"#CCFBF1"],[0.2,"#A8E6D9"],[0.4,"#A8E6D9"],[0.4,"#86EFCA"],[0.6,"#86EFCA"],[0.6,"#3A9188"],[0.8,"#3A9188"],[0.8,"#134E4A"],[1,"#134E4A"]],
+      opacity:0.85, xgap:3, ygap:3,
+      hovertemplate:"%{y} · %{x}: %{z}%<extra></extra>", showscale:true, colorbar:{title:"%",thickness:12,len:0.9}}],
+    layout:{xaxis:{showgrid:false,zeroline:false,side:"bottom"}, yaxis:{autorange:"reversed",showgrid:false,zeroline:false}, annotations:intentAnns, margin:{t:10,l:54,r:10,b:54}, height:230}
   };
   return (
     <div className="vstack" style={{gap:14}}>
@@ -8983,6 +8986,24 @@ function EvalPage() {
   const d = window.APP_DATA;
   const M = d.metrics;
   const deltas = M.overall.map(m=>({k:m.k,delta:+(m.bert-m.tfidf).toFixed(2)}));
+  // 검색 모델 레이더 (TF-IDF vs BERT, GT 50건)
+  const radarSearch = {
+    data:[
+      {type:"scatterpolar", r:[18,48,62,9.7], theta:["Hit@1","Hit@3","Hit@5","MAP@5"], fill:"toself", name:"TF-IDF", line:{color:C.tfidf,width:2}, fillcolor:"rgba(224,120,86,0.30)"},
+      {type:"scatterpolar", r:[24,52,62,12.9], theta:["Hit@1","Hit@3","Hit@5","MAP@5"], fill:"toself", name:"BERT", line:{color:C.bert,width:2}, fillcolor:"rgba(58,145,136,0.35)"},
+    ],
+    layout:{polar:{bgcolor:"rgba(0,0,0,0)", gridshape:"linear", radialaxis:{visible:true,range:[0,65],gridcolor:"rgba(150,150,150,0.25)",tickfont:{size:9}}, angularaxis:{gridcolor:"rgba(150,150,150,0.25)",tickfont:{size:12}}}, showlegend:true, legend:{orientation:"h",y:1.14,x:0.5,xanchor:"center"}, margin:{t:46,l:60,r:60,b:30}, height:340}
+  };
+  // 생성 방식 레이더 (3방향, 지식iN 300건 · 간결성=1-길이/400)
+  const radarRag = {
+    data:[
+      {type:"scatterpolar", r:[0.759,0.769,0.36], theta:["관련성","근거성","간결성"], fill:"toself", name:"A.Gemini단독", line:{color:C.dept[3],width:2}, fillcolor:"rgba(107,112,143,0.18)"},
+      {type:"scatterpolar", r:[0.565,0.723,0.16], theta:["관련성","근거성","간결성"], fill:"toself", name:"B.TF-IDF검색", line:{color:C.lcPuppy,width:2}, fillcolor:"rgba(232,154,84,0.16)"},
+      {type:"scatterpolar", r:[0.619,0.810,0.04], theta:["관련성","근거성","간결성"], fill:"toself", name:"C.BERT검색", line:{color:C.tfidf,width:2}, fillcolor:"rgba(224,120,86,0.16)"},
+      {type:"scatterpolar", r:[0.682,0.799,0.54], theta:["관련성","근거성","간결성"], fill:"toself", name:"D.RAG", line:{color:C.bert,width:2}, fillcolor:"rgba(58,145,136,0.35)"},
+    ],
+    layout:{polar:{bgcolor:"rgba(0,0,0,0)", gridshape:"linear", radialaxis:{visible:true,range:[0,0.85],gridcolor:"rgba(150,150,150,0.25)",tickfont:{size:9}}, angularaxis:{gridcolor:"rgba(150,150,150,0.25)",tickfont:{size:12}}}, showlegend:true, legend:{orientation:"h",y:1.14,x:0.5,xanchor:"center"}, margin:{t:46,l:60,r:60,b:30}, height:340}
+  };
   return (
     <div className="vstack" style={{gap:20}}>
       <div className="callout">
@@ -9004,6 +9025,28 @@ function EvalPage() {
             </div>
           </div>
         ))}
+      </div>
+      <div className="section-row">
+        <div className="card">
+          <div className="card-head"><div><h4 className="card-title">검색 모델 레이더 — TF-IDF vs BERT</h4><p className="card-sub">Hit@1/3/5·MAP@5 (GT 50건) — BERT가 전 지표 우위·동률</p></div></div>
+          <PlotlyChart fig={radarSearch} height={330}/>
+        </div>
+        <div className="card">
+          <div className="card-head"><div><h4 className="card-title">생성 방식 레이더 — 4방향</h4><p className="card-sub">관련성·근거성·간결성 (지식iN 300건) — RAG가 균형</p></div></div>
+          <PlotlyChart fig={radarRag} height={330}/>
+        </div>
+      </div>
+      <div className="card">
+        <div className="card-head"><div><h4 className="card-title">모델별 종합 비교</h4><p className="card-sub">검색 모델(GT 50건)·생성 방식(지식iN 300건)을 역할·핵심 지표로 비교</p></div></div>
+        <table className="table" style={{marginTop:4}}>
+          <thead><tr><th style={{textAlign:"left"}}>모델 / 방식</th><th style={{textAlign:"left"}}>역할</th><th style={{textAlign:"left"}}>핵심 지표</th><th style={{textAlign:"left"}}>특징</th></tr></thead>
+          <tbody>
+            <tr><td className="strong">TF-IDF</td><td>검색</td><td>Hit@1 18% · MAP 9.7%</td><td style={{color:"var(--text-muted)"}}>키워드 매칭 baseline</td></tr>
+            <tr><td className="strong" style={{color:C.bert}}>BERT ★</td><td>검색</td><td>Hit@1 24% (+6%p) · MAP 12.9%</td><td style={{color:"var(--text-muted)"}}>의미 매칭 — 구어체 우위</td></tr>
+            <tr><td className="strong">Gemini 단독</td><td>생성</td><td>관련성 0.759 · 근거성 0.769</td><td style={{color:"var(--text-muted)"}}>출처 없음 · 환각 위험</td></tr>
+            <tr><td className="strong" style={{color:C.bert}}>RAG ★</td><td>검색+생성</td><td>관련성 0.682 · 근거성 0.799</td><td style={{color:"var(--text-muted)"}}>근거+출처 — 메인 시스템</td></tr>
+          </tbody>
+        </table>
       </div>
       {(() => {
         const hitOnly = M.overall.filter(m=>m.k.startsWith("Hit"));
@@ -9185,8 +9228,9 @@ function EvalPage() {
         <div className="card-head"><div><h4 className="card-title">RAG 효과 검증 — 검색 결합의 정량 비교</h4><p className="card-sub">지식iN 실제 질문 기준 · 관련성(질문 적합도) · 근거성(수의사 데이터 근접도)</p></div></div>
         {[
           {m:"A. Gemini 단독", desc:"검색 없이 LLM만", rel:0.759, grd:0.769},
-          {m:"B. BERT 검색원본", desc:"top-1 수의사 답변", rel:0.619, grd:0.810},
-          {m:"C. RAG", desc:"검색 근거 + 생성", rel:0.682, grd:0.799, best:true},
+          {m:"B. TF-IDF 검색", desc:"키워드 top-1 원문", rel:0.565, grd:0.723},
+          {m:"C. BERT 검색", desc:"의미 top-1 원문", rel:0.619, grd:0.810},
+          {m:"D. RAG", desc:"검색 근거 + 생성", rel:0.682, grd:0.799, best:true},
         ].map((r,i)=>(
           <div key={i} style={{marginBottom:13}}>
             <div style={{fontSize:13,fontWeight:r.best?700:500,color:r.best?"var(--accent)":"var(--text)",marginBottom:5}}>{r.m} <span style={{fontSize:11,color:"var(--text-subtle)",fontWeight:400}}>{r.desc}</span></div>
@@ -9393,7 +9437,7 @@ function SourcesDetails({sources}) {
   );
 }
 
-// ── 3방향 비교 버블 (A.Gemini 단독 / B.검색 원본 / C.RAG) ──
+// ── 4방향 비교 버블 (A.Gemini 단독 / B.검색 원본 / C.RAG) ──
 function CompareBubble({msg}) {
   const s = INTENT_STYLE[msg.intent] || INTENT_STYLE.symptom;
   const m = msg.compare.metrics || {};
@@ -9411,7 +9455,7 @@ function CompareBubble({msg}) {
         <div style={{width:26,height:26,borderRadius:8,background:"var(--accent-soft)",display:"grid",placeItems:"center"}}>
           <Icon name="bot" size={14}/>
         </div>
-        <span style={{fontSize:11,fontWeight:600,color:"var(--text-subtle)",fontFamily:"var(--font-mono)",textTransform:"uppercase",letterSpacing:"0.06em"}}>3방향 비교</span>
+        <span style={{fontSize:11,fontWeight:600,color:"var(--text-subtle)",fontFamily:"var(--font-mono)",textTransform:"uppercase",letterSpacing:"0.06em"}}>4방향 비교</span>
         <span style={{fontSize:11,padding:"2px 8px",borderRadius:20,background:s.bg,color:s.color,fontWeight:600,fontFamily:"var(--font-mono)"}}>{s.label}</span>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginLeft:32}}>
@@ -9620,7 +9664,7 @@ function ChatPage() {
             color:compareMode?"var(--accent)":"var(--text-muted)",
             fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"var(--font-mono)"}}>
             <span style={{width:7,height:7,borderRadius:"50%",background:compareMode?"var(--accent)":"var(--text-subtle)"}}/>
-            3방향 비교 {compareMode?"ON":"OFF"}
+            4방향 비교 {compareMode?"ON":"OFF"}
           </button>
           <span style={{fontSize:11,color:"var(--text-subtle)"}}>
             {compareMode?"Gemini 단독 · 검색 원본 · RAG 세 답변을 나란히":"켜면 검색의 효과를 비교해서 보여줍니다"}
