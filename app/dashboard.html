@@ -7882,7 +7882,6 @@ const { useState, useEffect, useRef } = React;
 
 function SearchPage({ settings, setSettings }) {
   const data = window.APP_DATA;
-  const NaverPanel = window.NaverQuestionPanel;
   const [sub, setSub] = useState("AI Hub 답변 검색");
   const [query, setQuery] = useState("");
   const [searchState, setSearchState] = useState("empty");
@@ -7906,23 +7905,26 @@ function SearchPage({ settings, setSettings }) {
     runSearch(text);
   };
   const resultsCount = settings.topK;
+  const isNaver = sub === "네이버 보호자 질문";
+  const naverFlat = [];
+  if (data.naver && data.naver.samples) Object.entries(data.naver.samples).forEach(([intent,qs])=>qs.forEach(q=>naverFlat.push({q,intent})));
+  const exampleList = isNaver ? naverFlat : (data.sampleSuggestions||[]).map(q=>({q,intent:null}));
+  const intentColor = {증상:"#3A9188",응급:"#E07856",처치:"#6B708F"};
 
   return (
     <div className="vstack" style={{gap:14}}>
       <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
         {["AI Hub 답변 검색","네이버 보호자 질문"].map(s=>(
-          <button key={s} onClick={()=>setSub(s)} style={{padding:"8px 16px",borderRadius:9,fontSize:13,cursor:"pointer",border:"1px solid "+(sub===s?"var(--accent)":"var(--border)"),background:sub===s?"var(--accent-soft)":"var(--bg-elev)",color:sub===s?"var(--accent)":"var(--text-muted)",fontWeight:sub===s?600:400,transition:"all .15s"}}>{s}</button>
+          <button key={s} onClick={()=>{setSub(s);reset();}} style={{padding:"8px 16px",borderRadius:9,fontSize:13,cursor:"pointer",border:"1px solid "+(sub===s?"var(--accent)":"var(--border)"),background:sub===s?"var(--accent-soft)":"var(--bg-elev)",color:sub===s?"var(--accent)":"var(--text-muted)",fontWeight:sub===s?600:400,transition:"all .15s"}}>{s}</button>
         ))}
       </div>
-      {sub==="네이버 보호자 질문" && NaverPanel && <NaverPanel/>}
-      {sub==="AI Hub 답변 검색" && (
       <div className="search-layout">
       <div className="col-main">
         <div className="search-panel">
           <div className="search-input-wrap">
             <div className="glyph"><Icon name="search" size={18} /></div>
             <textarea ref={textareaRef} className="search-input"
-              placeholder="아래 샘플 증상을 선택하세요 · 직접 입력은 Lambda API 연동 후 지원됩니다"
+              placeholder={isNaver?"아래 네이버 실제 보호자 질문을 선택하세요 · 직접 입력은 Lambda API 연동 후 지원됩니다":"아래 샘플 증상을 선택하세요 · 직접 입력은 Lambda API 연동 후 지원됩니다"}
               rows={2} defaultValue={query} readOnly
               style={{cursor:"not-allowed", color:"var(--text-muted)"}}
               onKeyDown={(e) => { e.preventDefault(); }} />
@@ -7930,8 +7932,8 @@ function SearchPage({ settings, setSettings }) {
           <div className="search-foot">
             <div className="chips">
               <span className="muted mono" style={{fontSize:11}}>Quick picks</span>
-              {data.sampleSuggestions.slice(0,3).map((s)=>(
-                <button key={s} className="chip" onClick={()=>handleExampleClick(s)}>{s}</button>
+              {exampleList.slice(0,3).map((item,i)=>(
+                <button key={i} className="chip" onClick={()=>handleExampleClick(item.q)}>{item.q.length>22?item.q.slice(0,22)+"…":item.q}</button>
               ))}
             </div>
             <div className="hstack">
@@ -7942,13 +7944,14 @@ function SearchPage({ settings, setSettings }) {
           {searchState==="empty"&&(
             <div className="empty-state">
               <div className="big-icon"><Icon name="bot" size={22}/></div>
-              <h3>증상을 입력해 유사 Q&A를 찾아보세요</h3>
-              <p>21,604건의 수의사 답변 말뭉치에서 TF-IDF와 BERT 두 모델로 동시에 검색합니다.<br/>어떤 모델이 더 적합한 사례를 찾는지 나란히 비교해보세요.</p>
+              <h3>{isNaver?"네이버 실제 보호자 질문으로 검색해보세요":"증상을 입력해 유사 Q&A를 찾아보세요"}</h3>
+              <p>{isNaver?"네이버 지식iN 실제 보호자 질문(intent별)을 입력으로, 21,604건 AI Hub 수의사 답변에서 TF-IDF·BERT가 유사 사례를 검색합니다.":"21,604건의 수의사 답변 말뭉치에서 TF-IDF와 BERT 두 모델로 동시에 검색합니다."}<br/>어떤 모델이 더 적합한 사례를 찾는지 나란히 비교해보세요.</p>
               <div className="example-grid">
-                {data.sampleSuggestions.map((s,i)=>(
-                  <button key={s} className="example-pill" onClick={()=>handleExampleClick(s)}>
+                {exampleList.map((item,i)=>(
+                  <button key={i} className="example-pill" onClick={()=>handleExampleClick(item.q)}>
                     <span className="mono muted" style={{fontSize:11}}>{String(i+1).padStart(2,"0")}</span>
-                    <span style={{flex:1}}>{s}</span>
+                    <span style={{flex:1}}>{item.q}</span>
+                    {item.intent && <span style={{background:intentColor[item.intent]+"22",color:intentColor[item.intent],border:"1px solid "+intentColor[item.intent]+"55",fontSize:10.5,padding:"1px 7px",borderRadius:10,fontWeight:600,whiteSpace:"nowrap"}}>{item.intent}</span>}
                     <span className="arrow"><Icon name="arrow" size={14}/></span>
                   </button>
                 ))}
@@ -8031,7 +8034,6 @@ function SearchPage({ settings, setSettings }) {
         </div>
       </aside>
     </div>
-      )}
     </div>
   );
 }

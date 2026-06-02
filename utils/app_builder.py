@@ -294,6 +294,9 @@ def build_app_data(dl: DataLoader, include_sample_search: bool = True) -> dict:
         "simScores":    build_sim_scores(dl),
     }
     if include_sample_search:
-        print("  📡 샘플 검색 결과 미리 계산 중...")
-        data["sampleResults"] = build_sample_results(dl, matchers=(tfidf, bert))
+        print("  📡 샘플 검색 결과 미리 계산 중 (증상 예시 + 네이버 실제 질문)...")
+        sr = build_sample_results(dl, matchers=(tfidf, bert))
+        naver_qs = [q for qs in data["naver"]["samples"].values() for q in qs]
+        sr.update(build_sample_results(dl, suggestions=naver_qs, matchers=(tfidf, bert)))
+        data["sampleResults"] = sr
     return data
