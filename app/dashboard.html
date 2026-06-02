@@ -8089,7 +8089,7 @@ function DataPage() {
   const sourceBar = {
     data:[{type:"bar",
       x:["네이버 지식iN","AI Hub 코퍼스","VeNom 용어"], y:[114439,21604,39],
-      marker:{color:[C.dept[3], C.bert, C.lcPuppy]},
+      marker:{color:[C.dept[3], C.bert, C.lcPuppy], opacity:0.4, line:{width:2, color:[C.dept[3], C.bert, C.lcPuppy]}},
       text:["114,439건","21,604건","39종"], textposition:"outside", textfont:{size:12}, cliponaxis:false}],
     layout:{yaxis:{type:"log",title:"건수 (로그)",range:[0.5,6.6]}, margin:{t:26,l:62,r:24,b:42}, height:270, showlegend:false}
   };
@@ -8860,7 +8860,7 @@ function EdaPage() {
     data:[{type:"bar",
       x:["0.3~0.4","0.4~0.5","0.5~0.6","0.6~0.7","0.7~0.8","0.8~0.9","0.9~1.0"],
       y:[19,319,1085,4493,38616,35346,122],
-      marker:{color:[C.tfidf,C.tfidf,C.lcPuppy,C.lcPuppy,C.bert,C.bert,C.bert]},
+      marker:{color:[C.tfidf,C.tfidf,C.lcPuppy,C.lcPuppy,C.bert,C.bert,C.bert], opacity:0.4, line:{width:2, color:[C.tfidf,C.tfidf,C.lcPuppy,C.lcPuppy,C.bert,C.bert,C.bert]}},
       text:["19","319","1,085","4,493","38,616","35,346","122"], textposition:"outside"}],
     layout:{xaxis:{title:"top-1 코사인 유사도"}, yaxis:{title:"질문 수",range:[0,44000]}, margin:{t:32,l:66,r:24,b:46}, height:300, showlegend:false}
   };
@@ -8869,7 +8869,7 @@ function EdaPage() {
     data:[{type:"bar", orientation:"h",
       y:["발적","콧물","가려움","혈변","절뚝","발작","경련","기침","호흡","식욕","설사","구토"],
       x:[818,1087,1212,1365,1409,2259,2507,2586,2833,3391,6158,6991],
-      marker:{color:Array.from({length:12},(_,i)=>i===11?C.tfidf:C.bert)}, text:["818","1,087","1,212","1,365","1,409","2,259","2,507","2,586","2,833","3,391","6,158","6,991"], textposition:"outside"}],
+      marker:{color:Array.from({length:12},(_,i)=>i===11?C.tfidf:C.bert), opacity:0.4, line:{width:2, color:Array.from({length:12},(_,i)=>i===11?C.tfidf:C.bert)}}, text:["818","1,087","1,212","1,365","1,409","2,259","2,507","2,586","2,833","3,391","6,158","6,991"], textposition:"outside"}],
     layout:{xaxis:{title:"언급 횟수"}, margin:{t:16,l:60,r:46,b:42}, height:360, showlegend:false}
   };
   // 네이버: 품종 분포 (가로 막대)
@@ -8877,7 +8877,7 @@ function EdaPage() {
     data:[{type:"bar", orientation:"h",
       y:["닥스훈트","리트리버","치와와","비숑","시츄","포메라니안","푸들","말티즈"],
       x:[942,1127,1137,1241,1504,2205,3050,4088],
-      marker:{color:Array.from({length:8},(_,i)=>i===7?C.tfidf:C.bert)}, text:["942","1,127","1,137","1,241","1,504","2,205","3,050","4,088"], textposition:"outside"}],
+      marker:{color:Array.from({length:8},(_,i)=>i===7?C.tfidf:C.bert), opacity:0.4, line:{width:2, color:Array.from({length:8},(_,i)=>i===7?C.tfidf:C.bert)}}, text:["942","1,127","1,137","1,241","1,504","2,205","3,050","4,088"], textposition:"outside"}],
     layout:{xaxis:{title:"언급 횟수"}, margin:{t:16,l:78,r:48,b:42}, height:300, showlegend:false}
   };
   // 네이버: intent × 증상 키워드 교차 히트맵 (데이터마이닝)
@@ -9010,8 +9010,8 @@ function EvalPage() {
   const G4COL = [C.dept[3], C.lcPuppy, C.tfidf, C.bert];
   const genBars = {
     data:[
-      {type:"bar", name:"관련성", x:G4, y:[0.759,0.565,0.619,0.682], marker:{color:C.lcPuppy}},
-      {type:"bar", name:"근거성", x:G4, y:[0.769,0.723,0.810,0.799], marker:{color:C.bert}},
+      {type:"bar", name:"관련성", x:G4, y:[0.759,0.565,0.619,0.682], marker:{color:C.lcPuppy, opacity:0.4, line:{width:2, color:C.lcPuppy}}},
+      {type:"bar", name:"근거성", x:G4, y:[0.769,0.723,0.810,0.799], marker:{color:C.bert, opacity:0.4, line:{width:2, color:C.bert}}},
     ],
     layout:{barmode:"group", yaxis:{title:"점수",range:[0,1]}, margin:{t:30,l:50,r:20,b:40}, height:300, legend:{orientation:"h",y:1.16,x:0.5,xanchor:"center"}}
   };
@@ -9023,7 +9023,7 @@ function EvalPage() {
     layout:{xaxis:{title:"관련성 (질문 적합도)"}, yaxis:{title:"근거성 (데이터 근접도)"}, margin:{t:20,l:56,r:30,b:46}, height:320, showlegend:false}
   };
   const genLen = {
-    data:[{type:"bar", x:G4, y:[256,336,385,183], marker:{color:G4COL}, text:["256","336","385","183"], textposition:"outside"}],
+    data:[{type:"bar", x:G4, y:[256,336,385,183], marker:{color:G4COL, opacity:0.4, line:{width:2, color:G4COL}}, text:["256","336","385","183"], textposition:"outside"}],
     layout:{yaxis:{title:"평균 답변 길이(자)",range:[0,440]}, margin:{t:26,l:50,r:20,b:40}, height:280, showlegend:false}
   };
   return (
@@ -9311,15 +9311,15 @@ function MatchingPage() {
   const filtered = d.evalQueries.filter(q=>lifeFilter==="all"||lifeMap[lifeFilter]===q.life);
   const fullLifeBars = {
     data:[
-      {type:"bar", name:"TF-IDF", x:["자견","성견","노령견"], y:[25.4,24.6,21.4], marker:{color:C.tfidf}},
-      {type:"bar", name:"BERT", x:["자견","성견","노령견"], y:[23.7,26.4,24.0], marker:{color:C.bert}},
+      {type:"bar", name:"TF-IDF", x:["자견","성견","노령견"], y:[25.4,24.6,21.4], marker:{color:C.tfidf, opacity:0.4, line:{width:2, color:C.tfidf}}},
+      {type:"bar", name:"BERT", x:["자견","성견","노령견"], y:[23.7,26.4,24.0], marker:{color:C.bert, opacity:0.4, line:{width:2, color:C.bert}}},
     ],
     layout:{barmode:"group", yaxis:{title:"Hit@1 (%)",range:[0,35]}, margin:{t:30,l:50,r:20,b:36}, height:280, legend:{orientation:"h",y:1.18,x:0.5,xanchor:"center"}}
   };
   const fullDeptBars = {
     data:[
-      {type:"bar", name:"TF-IDF", x:["내과","외과","피부과","치과","안과"], y:[24.8,23.0,24.9,23.3,15.7], marker:{color:C.tfidf}},
-      {type:"bar", name:"BERT", x:["내과","외과","피부과","치과","안과"], y:[26.0,20.7,26.9,21.7,30.4], marker:{color:C.bert}},
+      {type:"bar", name:"TF-IDF", x:["내과","외과","피부과","치과","안과"], y:[24.8,23.0,24.9,23.3,15.7], marker:{color:C.tfidf, opacity:0.4, line:{width:2, color:C.tfidf}}},
+      {type:"bar", name:"BERT", x:["내과","외과","피부과","치과","안과"], y:[26.0,20.7,26.9,21.7,30.4], marker:{color:C.bert, opacity:0.4, line:{width:2, color:C.bert}}},
     ],
     layout:{barmode:"group", yaxis:{title:"Hit@1 (%)",range:[0,35]}, margin:{t:30,l:50,r:20,b:36}, height:280, legend:{orientation:"h",y:1.18,x:0.5,xanchor:"center"}}
   };
