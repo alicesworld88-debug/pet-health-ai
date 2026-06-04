@@ -290,6 +290,7 @@ def build_app_data(dl: DataLoader, include_sample_search: bool = True) -> dict:
         "naver":        build_naver(),
         "results":      {"bert": demo_bert, "tfidf": demo_tfidf},
         "evalQueries":  build_eval_queries(dl, tfidf=tfidf, bert=bert),
+        "fullMatching": dl.full_matching.to_dict(orient="records"),
         "failAnalysis": build_fail_analysis(dl),
         "simScores":    build_sim_scores(dl),
     }

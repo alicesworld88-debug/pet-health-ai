@@ -8,6 +8,4 @@ docs
 .aws-sam
 __pycache__
 *.pyc
-app/dashboard.html
-app/dashboard_live.html
 app/mock_data.js

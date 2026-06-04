@@ -104,14 +104,22 @@ Resources:
             ApiId: !Ref PetHealthApi
             Path: /bert/{proxy+}
             Method: ANY
+        # 루트(/) 포함 미매칭 경로 catch-all → BERT가 기본. (Path/Method 생략 = $default 라우트)
+        Default:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref PetHealthApi
     Metadata:
       Dockerfile: Dockerfile
       DockerContext: .
       DockerTag: pet-health-serving
 
 Outputs:
+  DashboardUrl:
+    Description: 대시보드 루트 URL (BERT 기본 — $default 라우트)
+    Value: !Sub https://${PetHealthApi}.execute-api.${AWS::Region}.amazonaws.com/
   ApiBaseUrl:
-    Description: HTTP API 기본 URL (대시보드 API_BASE = 이 값 + /tfidf 또는 /bert)
+    Description: HTTP API 기본 URL
     Value: !Sub https://${PetHealthApi}.execute-api.${AWS::Region}.amazonaws.com
   TfidfChatUrl:
     Value: !Sub https://${PetHealthApi}.execute-api.${AWS::Region}.amazonaws.com/tfidf/chat

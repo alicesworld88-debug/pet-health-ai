@@ -36,3 +36,10 @@ data/processed/compare_results.json
 
 # 로컬 에이전트 설정·메모리
 .claude/
+
+# SAM build artifacts
+.aws-sam/
+
+# 대시보드 데이터 빌드용 임시 venv
+.venv-dash/
+app/dashboard_live.html

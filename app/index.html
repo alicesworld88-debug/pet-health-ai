@@ -7893,31 +7893,11 @@ function SearchPage({ settings, setSettings }) {
     return data.results;
   };
   const [currentResults, setCurrentResults] = React.useState(data.results);
-  const runSearch = async (q) => {
+  const runSearch = (q) => {
     if (!q || !q.trim()) return;
     setQuery(q);
     setSearchState("loading");
-    // 모드에 따라 호출할 모델(=Lambda 함수) 결정 → 각각 /tfidf/chat · /bert/chat
-    const want = settings.mode === "bert" ? ["bert"]
-               : settings.mode === "tfidf" ? ["tfidf"]
-               : ["tfidf", "bert"];
-    const out = { tfidf: [], bert: [] };
-    await Promise.all(want.map(async (m) => {
-      try {
-        const res = await fetch("/" + m + "/chat", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: q }),
-        });
-        if (!res.ok) throw new Error(String(res.status));
-        const d = await res.json();
-        out[m] = (d.sources || []).map((s, i) => ({
-          rank: i + 1, sim: s.score, q: s.input, a: s.output,
-          lifecycle: s.lifecycle || "", disease: s.disease || "", dept: "",
-        }));
-      } catch (e) { out[m] = []; }  // 실패(예: BERT 콜드스타트)한 모델은 빈 결과
-    }));
-    setCurrentResults(out);
-    setSearchState("results");
+    setTimeout(() => { setCurrentResults(getResults(q)); setSearchState("results"); }, 700);
   };
   const reset = () => { setQuery(""); setSearchState("empty"); setOpenIdx({ bert: 0, tfidf: null }); };
   const handleExampleClick = (text) => {
@@ -7944,9 +7924,10 @@ function SearchPage({ settings, setSettings }) {
           <div className="search-input-wrap">
             <div className="glyph"><Icon name="search" size={18} /></div>
             <textarea ref={textareaRef} className="search-input"
-              placeholder={isNaver?"네이버 보호자 질문을 입력하세요 · Enter로 검색":"증상을 입력하세요 (예: 강아지가 토했어요) · Enter로 검색"}
-              rows={2} defaultValue={query}
-              onKeyDown={(e) => { if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); runSearch(e.target.value); } }} />
+              placeholder={isNaver?"아래 네이버 실제 보호자 질문을 선택하세요 · 직접 입력은 Lambda API 연동 후 지원됩니다":"아래 샘플 증상을 선택하세요 · 직접 입력은 Lambda API 연동 후 지원됩니다"}
+              rows={2} defaultValue={query} readOnly
+              style={{cursor:"not-allowed", color:"var(--text-muted)"}}
+              onKeyDown={(e) => { e.preventDefault(); }} />
           </div>
           <div className="search-foot">
             <div className="chips">
@@ -7996,9 +7977,7 @@ function SearchPage({ settings, setSettings }) {
                     <div className="left"><span className="swatch"/><span>TF-IDF</span><span className="subtle">scikit-learn · 키워드 기반</span></div>
                     <span className="subtle">top-{resultsCount}</span>
                   </div>
-                  {currentResults.tfidf.length===0
-                    ? <div className="muted" style={{padding:"10px 4px",fontSize:12}}>결과 없음 — 콜드스타트일 수 있어요. 잠시 후 다시 검색해 주세요.</div>
-                    : currentResults.tfidf.slice(0,resultsCount).map((r,i)=>(
+                  {currentResults.tfidf.slice(0,resultsCount).map((r,i)=>(
                     <ResultCard key={i} r={r} isOpen={openIdx.tfidf===i} model="tfidf"
                       onToggle={()=>setOpenIdx({...openIdx,tfidf:openIdx.tfidf===i?null:i})}/>
                   ))}
@@ -8010,9 +7989,7 @@ function SearchPage({ settings, setSettings }) {
                     <div className="left"><span className="swatch"/><span>Sentence-BERT</span><span className="subtle">ko-sroberta · 한국어 의미 기반</span></div>
                     <span className="subtle">top-{resultsCount}</span>
                   </div>
-                  {currentResults.bert.length===0
-                    ? <div className="muted" style={{padding:"10px 4px",fontSize:12}}>결과 없음 — BERT는 첫 호출 시 예열이 필요할 수 있어요. 잠시 후 다시 검색해 주세요.</div>
-                    : currentResults.bert.slice(0,resultsCount).map((r,i)=>(
+                  {currentResults.bert.slice(0,resultsCount).map((r,i)=>(
                     <ResultCard key={i} r={r} isOpen={openIdx.bert===i} model="bert"
                       onToggle={()=>setOpenIdx({...openIdx,bert:openIdx.bert===i?null:i})}/>
                   ))}

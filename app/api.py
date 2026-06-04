@@ -6,8 +6,8 @@
   - API 키는 .env에만 존재, 응답에 절대 포함되지 않음
   - 브라우저는 /chat 엔드포인트만 호출 (키 미노출)
 """
+import os
 import sys
-import json
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,6 +19,9 @@ sys.path.insert(0, str(ROOT))
 
 from chat import build_pipeline
 
+# 검색기 종류 — Lambda는 함수별 env(RETRIEVER_TYPE)로 tfidf/bert 선택
+RETRIEVER_TYPE = os.getenv("RETRIEVER_TYPE", "tfidf")
+
 app = FastAPI(title="반려견 증상 매칭 AI", docs_url=None, redoc_url=None)
 
 # CORS — S3 대시보드에서도 호출 가능하도록
@@ -29,17 +32,39 @@ app.add_middleware(
     allow_headers=["Content-Type"],
 )
 
-# 파이프라인 초기화 (서버 시작 시 1회)
-print("파이프라인 초기화 중... (TF-IDF)")
-_pipeline = build_pipeline(retriever_type="tfidf")
-print("TF-IDF 초기화 완료")
+# 메인 파이프라인 — Lambda는 env(RETRIEVER_TYPE)로 선택, 지연 초기화 + 전역 캐싱
+# (콜드스타트에 1회 빌드 → 웜 호출에서 재사용)
+_pipeline = None
 
-print("BERT 파이프라인 초기화 중... (비교용)")
-_pipeline_bert = build_pipeline(retriever_type="bert")
-print("BERT 초기화 완료")
+
+def get_pipeline():
+    global _pipeline
+    if _pipeline is None:
+        print(f"파이프라인 초기화 중... ({RETRIEVER_TYPE})")
+        _pipeline = build_pipeline(retriever_type=RETRIEVER_TYPE)
+        print("초기화 완료")
+    return _pipeline
+
+
+# /chat/compare(4방향 비교 — 로컬 대시보드)용: tfidf·bert 둘 다 지연 초기화
+# (Lambda 단일 함수에서는 호출되지 않으므로 무겁게 미리 만들지 않는다)
+_pipe_tfidf = None
+_pipe_bert = None
+
+
+def _get_compare_pipelines():
+    global _pipe_tfidf, _pipe_bert
+    if _pipe_tfidf is None:
+        _pipe_tfidf = build_pipeline(retriever_type="tfidf")
+    if _pipe_bert is None:
+        _pipe_bert = build_pipeline(retriever_type="bert")
+    return _pipe_tfidf, _pipe_bert
+
 
 # 비교용 지표 임베딩 모델 (lazy load — 첫 비교 요청 시 1회 로드)
 _embedder = None
+
+
 def _get_embedder():
     global _embedder
     if _embedder is None:
@@ -58,6 +83,8 @@ class SourceDoc(BaseModel):
     input: str
     output: str
     score: float
+    lifecycle: str = ""
+    disease: str = ""
 
 class ChatResponseBody(BaseModel):
     intent: str
@@ -86,7 +113,7 @@ class CompareResponseBody(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "pipeline": "tfidf"}
+    return {"status": "ok", "pipeline": RETRIEVER_TYPE}
 
 
 @app.post("/chat", response_model=ChatResponseBody)
@@ -97,7 +124,7 @@ def chat(req: ChatRequest):
     if len(query) > 500:
         raise HTTPException(status_code=400, detail="query가 너무 깁니다 (최대 500자).")
 
-    resp = _pipeline.chat(query)
+    resp = get_pipeline().chat(query)
 
     # 응답에 API 키 등 민감 정보 절대 포함하지 않음
     return ChatResponseBody(
@@ -105,8 +132,9 @@ def chat(req: ChatRequest):
         answer=resp.answer,
         clarify_question=resp.clarify_question,
         sources=[
-            SourceDoc(input=d.input, output=d.output, score=d.score)
-            for d in resp.sources[:3]
+            SourceDoc(input=d.input, output=d.output, score=d.score,
+                      lifecycle=getattr(d, "lifecycle", ""), disease=getattr(d, "disease", ""))
+            for d in resp.sources[:5]
         ],
     )
 
@@ -127,15 +155,16 @@ def chat_compare(req: ChatRequest):
     if len(query) > 500:
         raise HTTPException(status_code=400, detail="query가 너무 깁니다 (최대 500자).")
 
+    pipe_tfidf, pipe_bert = _get_compare_pipelines()
     # D. RAG (BERT 검색 + Gemini 생성) — 메인 시스템
-    resp = _pipeline_bert.chat(query)
+    resp = pipe_bert.chat(query)
     bert_sources = resp.sources
     bert_retrieval = bert_sources[0].output if bert_sources else "(검색 결과 없음)"
-    # B. TF-IDF 검색 top-1 원본
-    t_ret    = _pipeline.agents["symptom"].retriever
-    t_corpus = _pipeline.agents["symptom"].corpus_df
+    # B. TF-IDF 검색 top-1 원본 (corpus는 list[dict])
+    t_ret    = pipe_tfidf.agents["symptom"].retriever
+    t_corpus = pipe_tfidf.agents["symptom"].corpus
     t_idx, _ = t_ret.match(query, top_k=1)
-    tfidf_retrieval = str(t_corpus.iloc[t_idx[0]]["output"]) if len(t_idx) else "(검색 결과 없음)"
+    tfidf_retrieval = str(t_corpus[t_idx[0]]["output"]) if len(t_idx) else "(검색 결과 없음)"
     # A. Gemini 단독 (검색 없음)
     gemini_only = generate_answer_solo(query)
 
@@ -191,4 +220,24 @@ def serve_dashboard():
     live = ROOT / "app" / "dashboard_live.html"
     base = ROOT / "app" / "dashboard.html"
     target = live if live.exists() else base
-    return HTMLResponse(content=target.read_text(encoding="utf-8"))
+    if not target.exists():
+        return HTMLResponse(
+            content="<h1>반려견 증상 매칭 AI API</h1><p>대시보드 파일이 없습니다. API는 /chat, /health 사용.</p>",
+        )
+    html = target.read_text(encoding="utf-8")
+    # 같은 Lambda가 대시보드를 서빙하므로, 대시보드의 루트경로 호출(/chat, /chat/compare)에
+    # 함수 prefix(/tfidf · /bert)를 자동으로 붙여 같은 함수의 API로 가도록 fetch를 보정한다.
+    # (CDN 등 https 절대경로는 영향 없음 — '/'로 시작하는 경로만 보정)
+    base_path = os.getenv("API_BASE_PATH", "").rstrip("/")
+    if base_path:
+        # 기본 prefix(base_path)를 루트 호출에 붙이되, 이미 /tfidf/ · /bert/ 로
+        # 시작하는 명시 경로(검색 패널의 모델별 호출)는 그대로 둔다 → 이중 prefix 방지.
+        patch = (
+            "<script>(function(){var _f=window.fetch;window.fetch=function(u,o){"
+            'if(typeof u==="string"&&u.charAt(0)==="/"&&!/^\\/(tfidf|bert)\\//.test(u))'
+            f'u="{base_path}"+u;'
+            "return _f(u,o);};})();</script>"
+        )
+        html = html.replace("</head>", patch + "\n</head>", 1)
+    # 브라우저가 옛 대시보드를 캐싱하지 않도록 (갱신 즉시 반영)
+    return HTMLResponse(content=html, headers={"Cache-Control": "no-cache, must-revalidate"})

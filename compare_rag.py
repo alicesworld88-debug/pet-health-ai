@@ -116,7 +116,7 @@ def main():
     print("RAG 파이프라인 초기화 (BERT 검색 + Gemini)...")
     pipe      = build_pipeline(retriever_type="bert")
     retriever = pipe.agents["symptom"].retriever      # 공유 BERT retriever
-    corpus_df = pipe.agents["symptom"].corpus_df
+    corpus = pipe.agents["symptom"].corpus            # list[dict] (pandas 미사용)
 
     questions = sample_questions()
     print(f"지식iN 질문 {len(questions)}개로 3방향 비교 시작\n")
@@ -134,7 +134,7 @@ def main():
 
         # 근거성 측정용 넓은 참고풀 (top-20)
         idxs, _   = retriever.match(query, top_k=POOL_K)
-        pool_out  = [str(corpus_df.iloc[i].get("output", "")) for i in idxs]
+        pool_out  = [str(corpus[i].get("output", "")) for i in idxs]
         pool_embs = embedder.encode(pool_out, convert_to_tensor=True)
         ref_top1  = pool_out[0]
         refs5     = pool_out[:5]                        # 환각 채점 기준 (top-5)

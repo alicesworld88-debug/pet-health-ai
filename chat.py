@@ -12,14 +12,24 @@ AI 수의사 채팅 파이프라인 — 멀티 에이전트 라우팅 구조
 """
 from __future__ import annotations
 
+import csv
+import sys
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 import pickle
 from pathlib import Path
 
-import pandas as pd
-
 from utils.generator import generate_answer
+
+# corpus CSV에 매우 긴 답변 필드가 있어 기본 csv 한도를 넘을 수 있다.
+csv.field_size_limit(min(sys.maxsize, 2**31 - 1))
+
+
+def _load_corpus_rows(path: Path) -> list[dict]:
+    """corpus_preprocessed.csv를 list[dict]로 로드 (pandas 미사용 — 슬림 Lambda 대응).
+    utf-8-sig: 엑셀 등에서 저장된 BOM을 제거해 첫 컬럼명(lifeCycle) 깨짐 방지."""
+    with open(path, encoding="utf-8-sig", newline="") as f:
+        return list(csv.DictReader(f))
 
 
 # ── 데이터 구조 ────────────────────────────────────────────────────────
@@ -93,19 +103,19 @@ class BaseAgent:
     system_prompt: str = ""
     top_k:         int = 5
 
-    def __init__(self, retriever: Retriever, corpus_df: pd.DataFrame):
+    def __init__(self, retriever: Retriever, corpus: list[dict]):
         self.retriever = retriever
-        self.corpus_df = corpus_df
+        self.corpus = corpus
 
     def _retrieve(self, query: str) -> list[RetrievedDoc]:
         indices, scores = self.retriever.match(query, top_k=self.top_k)
         return [
             RetrievedDoc(
-                input=self.corpus_df.iloc[i]["input"],
-                output=self.corpus_df.iloc[i]["output"],
+                input=self.corpus[i].get("input", ""),
+                output=self.corpus[i].get("output", ""),
                 score=round(float(scores[j]), 4),
-                lifecycle=self.corpus_df.iloc[i].get("lifeCycle", ""),
-                disease=self.corpus_df.iloc[i].get("disease", ""),
+                lifecycle=self.corpus[i].get("lifeCycle", ""),
+                disease=self.corpus[i].get("disease", ""),
             )
             for j, i in enumerate(indices)
         ]
@@ -194,16 +204,16 @@ class ChatPipeline:
         3. classify_intent()에 분류 로직 추가
     """
 
-    def __init__(self, retriever: Retriever, corpus_df: pd.DataFrame):
+    def __init__(self, retriever: Retriever, corpus: list[dict]):
         self.agents: dict[str, BaseAgent] = {
-            "symptom":   SymptomAgent(retriever, corpus_df),
-            "treatment": TreatmentAgent(retriever, corpus_df),
-            "emergency": EmergencyAgent(retriever, corpus_df),
+            "symptom":   SymptomAgent(retriever, corpus),
+            "treatment": TreatmentAgent(retriever, corpus),
+            "emergency": EmergencyAgent(retriever, corpus),
         }
-        # ML 기반 intent 분류기 로드
-        from utils.config import DATA_PROCESSED
-        clf_path = DATA_PROCESSED / "intent_classifier.pkl"
-        if clf_path.exists():
+        # ML 기반 intent 분류기 로드 (s3 모드면 /tmp로 내려받음)
+        from utils.runtime_paths import data_dir, ensure_s3_file, INTENT_KEY
+        clf_path = data_dir() / "intent_classifier.pkl"
+        if ensure_s3_file(INTENT_KEY, clf_path, optional=True):
             with open(clf_path, "rb") as f:
                 self.intent_classifier = pickle.load(f)
         else:
@@ -251,22 +261,35 @@ def build_pipeline(retriever_type: str = "bert") -> ChatPipeline:
     retriever_type: 'bert' (기본) 또는 'tfidf'
     전체 21,604건 코퍼스 사용 (train 19,205 + validation 2,399)
     """
-    from utils.config import DATA_PROCESSED
-    from utils.matcher import BERTMatcher, TFIDFMatcher
+    from utils.matcher import TFIDFMatcher
+    from utils.runtime_paths import (
+        data_dir, ensure_s3_file, CORPUS_KEY, EMB_KEY, PREFIT_KEY,
+    )
 
-    corpus_df = pd.read_csv(DATA_PROCESSED / "corpus_preprocessed.csv")
-    db_corpus = corpus_df["input_normalized"].fillna("").tolist()
+    corpus_path = data_dir() / "corpus_preprocessed.csv"
+    ensure_s3_file(CORPUS_KEY, corpus_path)
+    corpus = _load_corpus_rows(corpus_path)
 
     if retriever_type == "bert":
-        full_emb_path = DATA_PROCESSED / "embeddings" / "full_embeddings.npy"
-        retriever = BERTMatcher(embed_path=full_emb_path).load_or_build(db_corpus)
+        from utils.matcher import BERTMatcher  # torch lazy import
+        emb_path = data_dir() / "embeddings" / "full_embeddings.npy"
+        ensure_s3_file(EMB_KEY, emb_path)
+        db_corpus = [r.get("input_normalized", "") for r in corpus]
+        retriever = BERTMatcher(embed_path=emb_path).load_or_build(db_corpus)
     elif retriever_type == "tfidf":
-        tokens = corpus_df["input_tokens"].fillna("").tolist()
-        retriever = TFIDFMatcher().fit(tokens)
+        # 콜드스타트 단축: 사전 학습 피클이 있으면 fit() 생략 (build_tfidf_prefit.py)
+        prefit_path = data_dir() / "tfidf_prefit.pkl"
+        if ensure_s3_file(PREFIT_KEY, prefit_path, optional=True):
+            with open(prefit_path, "rb") as f:
+                vec, mat = pickle.load(f)
+            retriever = TFIDFMatcher().load_prefit(vec, mat)
+        else:
+            tokens = [r.get("input_tokens", "") for r in corpus]
+            retriever = TFIDFMatcher().fit(tokens)
     else:
         raise ValueError(f"retriever_type은 'bert' 또는 'tfidf'만 가능합니다: {retriever_type}")
 
-    return ChatPipeline(retriever=retriever, corpus_df=corpus_df)
+    return ChatPipeline(retriever=retriever, corpus=corpus)
 
 
 # ── 터미널 실행 ────────────────────────────────────────────────────────

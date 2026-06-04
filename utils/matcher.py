@@ -14,7 +14,9 @@ from pathlib import Path
 from functools import cached_property
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from sentence_transformers import SentenceTransformer
+
+# NOTE: sentence_transformers(→torch)는 BERTMatcher 안에서 lazy import 한다.
+#       TF-IDF 전용 Lambda(zip+layer)가 torch를 끌어오지 않도록 하기 위함.
 
 from utils.config import DATA_PROCESSED
 
@@ -46,6 +48,13 @@ class TFIDFMatcher:
         self._matrix     = self._vectorizer.fit_transform(tokens)
         return self
 
+    def load_prefit(self, vectorizer: TfidfVectorizer, matrix) -> "TFIDFMatcher":
+        """사전 학습된 (vectorizer, matrix)를 주입해 fit() 단계를 건너뛴다.
+        Lambda 콜드스타트에서 21,604문서 벡터화 비용을 제거하기 위함 (build_tfidf_prefit.py 산출물)."""
+        self._vectorizer = vectorizer
+        self._matrix     = matrix
+        return self
+
     def match(self, query: str, top_k: int = 5) -> tuple[list[int], list[float]]:
         """쿼리 → 코사인 유사도 기준 상위 top_k (인덱스, 점수) 반환.
         corpus는 형태소 토큰으로 구축됐으므로 쿼리도 같은 방식으로 전처리.
@@ -71,10 +80,11 @@ class BERTMatcher:
         self.model_name  = model_name
         self.embed_path  = embed_path
         self._embeddings: np.ndarray | None = None
-        self.__model: SentenceTransformer | None = None
 
     @cached_property
-    def _model(self) -> SentenceTransformer:
+    def _model(self):
+        # torch 의존성이므로 여기서 lazy import (모듈 import 시점에 끌어오지 않음)
+        from sentence_transformers import SentenceTransformer
         print(f"  BERT 모델 로딩: {self.model_name}")
         return SentenceTransformer(self.model_name)
 
